@@ -3,7 +3,7 @@ import {useMutation, useQueryClient} from "@tanstack/react-query";
 import {createEntity, type SelectOption} from "@/lib/fibery";
 import {cn} from "@/lib/cn";
 import {friendlyError, type Course, type WorkItem} from "@/dashboard";
-import {Modal} from "@/components";
+import {Modal} from "@/dashboard-components/shared/components";
 import {completeWorkItem, type CompletionOptions} from "@/completeWork";
 
 export function QuickAdd({

@@ -1,4 +1,5 @@
 import type {ReactNode} from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import {X} from "lucide-react";
 import {cn} from "@/lib/cn";
 
@@ -40,14 +41,14 @@ export function MetricCard({
   tone: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-3 shadow-sm">
+    <div className="metric-card rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-0.5 text-xl font-semibold tracking-tight">{value}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         </div>
-        <span className={cn("rounded-lg p-1.5", tone)}>{icon}</span>
+        <span className={cn("rounded-xl p-3", tone)}>{icon}</span>
       </div>
     </div>
   );
@@ -70,17 +71,20 @@ export function Toggle({checked, onChange, label}: {checked: boolean; onChange: 
 
 export function Modal({title, children, onClose}: {title: string; children: ReactNode; onClose: () => void}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" onMouseDown={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border bg-popover p-5 text-popover-foreground shadow-xl" onMouseDown={(event) => event.stopPropagation()}>
+    <Dialog.Root open onOpenChange={(open) => {if (!open) onClose();}}>
+      <Dialog.Portal>
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm" />
+      <Dialog.Content aria-describedby={undefined} className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-popover p-5 text-popover-foreground shadow-xl">
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
           <button type="button" onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground" aria-label="Close">
             <X className="size-4" />
           </button>
         </div>
         {children}
-      </div>
-    </div>
+      </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

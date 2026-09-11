@@ -101,3 +101,138 @@
 }
 
 @tailwind utilities;
+
+/* Fibery's host used to inject these tokens. Keep the standalone palette local. */
+:root {
+  color-scheme: dark;
+  --background: #201c1a;
+  --foreground: #e7ddd6;
+  --card: #272321;
+  --card-foreground: #e7ddd6;
+  --popover: #2b2623;
+  --popover-foreground: #e7ddd6;
+  --primary: #008eaa;
+  --primary-foreground: #ffffff;
+  --secondary: #35302d;
+  --secondary-foreground: #ded3cb;
+  --muted: #37322f;
+  --muted-foreground: #b3a79e;
+  --accent: #3b3531;
+  --accent-foreground: #f2e9e3;
+  --destructive: #ed8e88;
+  --border: #423b36;
+  --input: #49413c;
+  --ring: #65cdbb;
+  --radius: 0.85rem;
+  --sidebar: #1b1816;
+  --sidebar-foreground: #b3a79e;
+  --sidebar-primary: #70d8c5;
+  --sidebar-primary-foreground: #173d36;
+  --sidebar-accent: #233a33;
+  --sidebar-accent-foreground: #8be1cf;
+  --sidebar-border: #342e2a;
+  --sidebar-ring: #65cdbb;
+  --chart-1: #a29d99;
+  --chart-2: #c1b2db;
+  --chart-3: #9edc84;
+  --chart-4: #ed8e88;
+  --chart-5: #edcd7f;
+  --chart-6: #93b9e6;
+  --chart-7: #70d8c5;
+  --chart-8: #e8b0ce;
+  --chart-9: #e8ac7d;
+  --highlight-yellow-bg: #50431c;
+  --highlight-yellow-fg: #e6c56e;
+  --highlight-yellow-fg-on-bg: #edcd7f;
+  --highlight-green-bg: #354726;
+  --highlight-green-fg: #add88d;
+  --highlight-green-fg-on-bg: #b4dd96;
+  --highlight-aquamarine-bg: #124c42;
+  --highlight-aquamarine-fg: #70d8c5;
+  --highlight-aquamarine-fg-on-bg: #82e2cf;
+  --highlight-aqua-bg: #17443e;
+  --highlight-aqua-fg: #83d4cb;
+  --highlight-aqua-fg-on-bg: #90dcd1;
+  --highlight-blue-bg: #2d4059;
+  --highlight-blue-fg: #adc9ef;
+  --highlight-blue-fg-on-bg: #b3cff2;
+  --highlight-purple-bg: #433452;
+  --highlight-purple-fg: #c6afe6;
+  --highlight-purple-fg-on-bg: #d0b9ed;
+  --highlight-pink-bg: #58394b;
+  --highlight-pink-fg: #e8aed0;
+  --highlight-pink-fg-on-bg: #edb9d6;
+  --highlight-red-bg: #542f2d;
+  --highlight-red-fg: #ed9e95;
+  --highlight-red-fg-on-bg: #f1aba2;
+  --highlight-grey-bg: #3b3531;
+  --highlight-grey-fg: #b9afa6;
+  --highlight-grey-fg-on-bg: #c7bdb5;
+  --highlight-violet-bg: #413553;
+  --highlight-violet-fg: #c6b1ee;
+  --highlight-violet-fg-on-bg: #d0bcf3;
+  --highlight-turquoise-bg: #214449;
+  --highlight-turquoise-fg: #8cccd4;
+  --highlight-turquoise-fg-on-bg: #9bd8dc;
+  --highlight-orange-bg: #553c28;
+  --highlight-orange-fg: #e8ac7d;
+  --highlight-orange-fg-on-bg: #edb88c;
+}
+
+@layer base {
+  html { min-width: 320px; background: var(--background); }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), select:not(:disabled) { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  input, select, textarea { color-scheme: dark; }
+  option { background: var(--card); color: var(--foreground); }
+  svg.lucide { flex-shrink: 0; }
+  ::selection { background: #286152; color: #f4eee8; }
+  * { scrollbar-width: thin; scrollbar-color: #554a41 transparent; }
+}
+
+@layer components {
+  .workspace { --sidebar-width: 232px; min-height: 100dvh; }
+  .workspace-collapsed { --sidebar-width: 76px; }
+  .workspace-sidebar { position: fixed; z-index: 30; inset: 0 auto 0 0; display: flex; flex-direction: column; width: var(--sidebar-width); padding: 28px 18px 18px; border-right: 1px solid var(--sidebar-border); background: var(--sidebar); overflow-y: auto; }
+  .sidebar-brand { display: flex; gap: 12px; align-items: center; color: var(--foreground); }
+  .sidebar-link { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 9px; padding: 12px; color: var(--sidebar-foreground); font-size: 12px; font-weight: 500; transition: background 150ms, color 150ms; }
+  .sidebar-link:hover { background: var(--accent); color: var(--foreground); }
+  .sidebar-link.is-active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); border-color: #355146; }
+  .workspace-content { margin-left: var(--sidebar-width); min-width: 0; }
+  .workspace-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 32px; color: var(--muted-foreground); font-size: 11px; border-bottom: 1px solid var(--sidebar-border); }
+  .workspace-collapsed .sidebar-expanded { display: none; }
+  .workspace-collapsed .workspace-sidebar { padding-left: 10px; padding-right: 10px; }
+  .workspace-collapsed .sidebar-brand { justify-content: center; margin-bottom: 40px; }
+  .workspace-collapsed .sidebar-link { justify-content: center; padding: 12px 0; }
+  .mobile-header { display: none; }
+  .skip-link { position: fixed; top: -80px; left: 12px; z-index: 100; border-radius: 6px; padding: 10px; background: var(--primary); color: white; }
+  .skip-link:focus { top: 10px; }
+  .metric-card { min-height: 138px; }
+  .metric-card svg { width: 20px; height: 20px; }
+  .academic-compact .work-row { padding-top: 7px; padding-bottom: 7px; }
+  .accepted-glow { filter: drop-shadow(0 0 5px #a4e38299); }
+}
+
+@media (min-width: 1600px) {
+  .workspace { --sidebar-width: 250px; }
+  .workspace-collapsed { --sidebar-width: 76px; }
+}
+@media (max-width: 767px) {
+  .workspace { --sidebar-width: 0px; }
+  .workspace-content { margin-left: 0; }
+  .mobile-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--sidebar); }
+  .workspace-sidebar { display: none; position: fixed; inset: 67px 0 auto; width: 100%; max-height: calc(100dvh - 67px); padding: 20px; box-shadow: 0 24px 40px #0008; }
+  .workspace-sidebar.is-open { display: flex; }
+  .workspace-collapsed .sidebar-expanded { display: block; }
+  .workspace-collapsed .sidebar-brand { justify-content: start; margin-bottom: 0; }
+  .workspace-collapsed .sidebar-link { justify-content: start; padding: 12px; }
+  .sidebar-collapse { display: none; }
+  .workspace-topbar { padding: 12px 18px; font-size: 10px; }
+  .metric-card { min-height: 128px; padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

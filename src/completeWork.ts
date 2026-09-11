@@ -7,8 +7,8 @@ import {
   setDocument,
   type SelectItem,
   type SelectOption,
-} from "@/lib/fibery";
-import {dateKey, type CompletedWork, type WorkItem} from "@/dashboard";
+} from "./lib/fibery";
+import {dateKey, type CompletedWork, type WorkItem} from "./dashboard";
 
 export type CompletionOptions = {
   types: SelectOption[];

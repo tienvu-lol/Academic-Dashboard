@@ -3,21 +3,21 @@ import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, parseISO, startOfMonth, startOfWeek, subMonths} from "date-fns";
 import {Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import {AlertTriangle, BookOpen, CalendarCheck2, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, GraduationCap, Layers3, ListTodo, Pencil, Plus, RefreshCcw, Settings2, Sparkles, Users} from "lucide-react";
-import {getSchema, getSingleSelectOptions, getWorkflowStates, openEntity, queryEntities, updateEntity} from "@/lib/fibery";
+import {getSchema, getSingleSelectOptions, getWorkflowStates, queryEntities, updateEntity} from "@/lib/fibery";
 import {cn} from "@/lib/cn";
-import {ChartTooltip, DataBadge, MetricCard, SectionTitle, Toggle} from "@/components";
-import {CompletedEditor} from "@/CompletedEditor";
-import {CourseEditor} from "@/CourseEditor";
-import {DailyQuote} from "@/DailyQuote";
-import {NotesPanel} from "@/NotesPanel";
-import {QuickAdd} from "@/QuickAdd";
-import {SettingsPanel} from "@/SettingsPanel";
-import {TaskEditor} from "@/TaskEditor";
+import {ChartTooltip, DataBadge, MetricCard, SectionTitle} from "@/dashboard-components/shared/components";
+import {CompletedEditor} from "@/dashboard-components/academic/CompletedEditor";
+import {CourseEditor} from "@/dashboard-components/academic/CourseEditor";
+import {DailyQuote} from "@/dashboard-components/academic/DailyQuote";
+import {NotesPanel} from "@/dashboard-components/academic/NotesPanel";
+import {QuickAdd} from "@/dashboard-components/academic/QuickAdd";
+import {SettingsPanel} from "@/dashboard-components/academic/SettingsPanel";
+import {TaskEditor} from "@/dashboard-components/academic/TaskEditor";
 import {completeWorkItem, type CompletionOptions} from "@/completeWork";
-import {DEFAULT_PREFS, PREF_KEY, dateKey, friendlyError, heatTone, isDone, readPreferences, sourceTone, stateTone, type Assignment, type CalendarEvent, type CompletedWork, type Course, type Preferences, type Todo, type WorkItem} from "@/dashboard";
+import {DEFAULT_PREFS, PREF_KEY, dateKey, friendlyError, heatTone, isDone, readPreferences, sourceTone, stateTone, type Assignment, type CompletedWork, type Course, type Preferences, type Todo, type WorkItem} from "@/dashboard";
 
 type QueueView = "Today" | "Selected" | "Upcoming" | "All" | "Completed";
-type CalendarEntry = CalendarEvent & {calendarType: "Google Calendar/Event" | "Google Calendar/All Day Event"};
+const EMPTY: never[] = [];
 type CalendarWorkPreview =
   | {kind: "active"; item: WorkItem}
   | {kind: "completed"; item: CompletedWork};
@@ -60,7 +60,7 @@ function calendarWorkPreviews(tasks: WorkItem[], completedAssignments: Completed
 function workRowTone(name: string, dueDate: string | null, todayKey: string) {
   const assessment = isAssessmentName(name);
   const daysUntilDue = dueDate ? differenceInCalendarDays(parseISO(dueDate), parseISO(todayKey)) : null;
-  if (daysUntilDue !== null && daysUntilDue < 0) return "bg-destructive text-white border-2 border-destructive ring-2 ring-destructive shadow-lg";
+  if (daysUntilDue !== null && daysUntilDue < 0) return "highlight-red border-red";
   if (assessment && daysUntilDue !== null && daysUntilDue <= 2) return "highlight-violet border-2 border-yellow";
   if (assessment) return "highlight-violet border-violet";
   if (daysUntilDue !== null && daysUntilDue <= 2) return "highlight-yellow border-yellow";
@@ -77,7 +77,7 @@ function assignmentDueBadge(dueDate: string | null, todayKey: string) {
   return {label: `Due in ${days} days`, tone: "highlight-grey"};
 }
 
-export default function App() {
+export default function AcademicPage() {
   const queryClient = useQueryClient();
   const today = new Date();
   const todayKey = dateKey(today);
@@ -85,6 +85,8 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [queueView, setQueueView] = useState<QueueView>("Today");
   const [sourceFilter, setSourceFilter] = useState<"All" | "Assignment" | "To-Do">("All");
+  const [preferenceError, setPreferenceError] = useState("");
+  const [queueLimit, setQueueLimit] = useState(50);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editingTask, setEditingTask] = useState<WorkItem | null>(null);
@@ -93,11 +95,14 @@ export default function App() {
   const [preferences, setPreferences] = useState<Preferences>(readPreferences);
 
   function updatePreference<K extends keyof Preferences>(key: K, value: Preferences[K]) {
-    setPreferences((current) => {
-      const next = {...current, [key]: value};
+    const next = {...preferences, [key]: value, showCalendar: false};
+    try {
       localStorage.setItem(PREF_KEY, JSON.stringify(next));
-      return next;
-    });
+      setPreferences(next);
+      setPreferenceError("");
+    } catch {
+      setPreferenceError("Preferences could not be saved. Check your browser storage space.");
+    }
   }
 
   const assignmentsQuery = useQuery({
@@ -107,7 +112,6 @@ export default function App() {
       type: "University/Assignments",
       fields: ["fibery/id", "fibery/public-id", "University/Name", "University/Due Date", "University/Days Left", {"University/Course": ["fibery/id", "University/Name"]}, {"University/Priority": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}, {"workflow/state": ["fibery/id", "enum/name"]}],
       orderBy: {field: "University/Due Date", direction: "asc"},
-      limit: 1000,
     }),
   });
   const todosQuery = useQuery({
@@ -117,7 +121,6 @@ export default function App() {
       type: "University/To-Dos",
       fields: ["fibery/id", "fibery/public-id", "University/Name", "University/Due Date", "University/Days Left", {"University/Category": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}, {"workflow/state": ["fibery/id", "enum/name"]}],
       orderBy: {field: "University/Due Date", direction: "asc"},
-      limit: 1000,
     }),
   });
   const coursesQuery = useQuery({
@@ -126,7 +129,6 @@ export default function App() {
       type: "University/Courses",
       fields: ["fibery/id", "fibery/public-id", "University/Name", "University/Credit Hours", {"University/Academic Year": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}],
       orderBy: {field: "University/Name", direction: "asc"},
-      limit: 500,
     }),
   });
   const completedQuery = useQuery({
@@ -135,22 +137,8 @@ export default function App() {
       type: "University/Completed Work",
       fields: ["fibery/id", "fibery/public-id", "University/Name", "University/Completion Date", "University/Original Due Date", {"University/Course": ["fibery/id", "University/Name"]}, {"University/Category": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}, {"University/Priority": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}, {"University/Type": ["fibery/id", "enum/name", "enum/color", "enum/icon"]}],
       orderBy: {field: "University/Completion Date", direction: "desc"},
-      limit: 1500,
     }),
-    refetchInterval: 10000,
-    refetchOnWindowFocus: "always",
   });
-  const eventsQuery = useQuery({
-    queryKey: ["google-calendar-events"],
-    enabled: preferences.showCalendar,
-    queryFn: () => queryEntities<CalendarEvent>({type: "Google Calendar/Event", fields: ["fibery/id", "fibery/public-id", "Google Calendar/Name", "Google Calendar/Dates", "Google Calendar/Location"], orderBy: {field: "Google Calendar/Dates", direction: "asc"}, limit: 1000}),
-  });
-  const allDayEventsQuery = useQuery({
-    queryKey: ["google-calendar-all-day-events"],
-    enabled: preferences.showCalendar,
-    queryFn: () => queryEntities<CalendarEvent>({type: "Google Calendar/All Day Event", fields: ["fibery/id", "fibery/public-id", "Google Calendar/Name", "Google Calendar/Dates", "Google Calendar/Location"], orderBy: {field: "Google Calendar/Dates", direction: "asc"}, limit: 1000}),
-  });
-
   const prioritiesQuery = useQuery({queryKey: ["assignment-priorities"], queryFn: () => getSingleSelectOptions({type: "University/Assignments", field: "University/Priority"})});
   const categoriesQuery = useQuery({queryKey: ["todo-categories"], queryFn: () => getSingleSelectOptions({type: "University/To-Dos", field: "University/Category"})});
   const completedPrioritiesQuery = useQuery({queryKey: ["completed-priorities"], queryFn: () => getSingleSelectOptions({type: "University/Completed Work", field: "University/Priority"})});
@@ -167,10 +155,10 @@ export default function App() {
     },
   });
 
-  const assignments = preferences.showAssignments ? assignmentsQuery.data ?? [] : [];
-  const todos = preferences.showTodos ? todosQuery.data ?? [] : [];
-  const courses = coursesQuery.data ?? [];
-  const completed = completedQuery.data ?? [];
+  const assignments = preferences.showAssignments ? assignmentsQuery.data ?? EMPTY : EMPTY;
+  const todos = preferences.showTodos ? todosQuery.data ?? EMPTY : EMPTY;
+  const courses = coursesQuery.data ?? EMPTY;
+  const completed = completedQuery.data ?? EMPTY;
   const assignmentStates = assignmentStatesQuery.data ?? [];
   const todoStates = todoStatesQuery.data ?? [];
 
@@ -195,7 +183,7 @@ export default function App() {
     })),
   ].sort((a, b) => (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")), [assignments, todos, paintsQuery.data?.courseColor]);
 
-  const activeWork = allWork.filter((item) => !isDone(item.state));
+  const activeWork = useMemo(() => allWork.filter((item) => !isDone(item.state)), [allWork]);
   const dueToday = activeWork.filter((item) => item.dueDate === todayKey);
   const overdue = activeWork.filter((item) => item.dueDate && item.dueDate < todayKey);
   const completedToday = completed.filter((item) => item["University/Completion Date"] === todayKey);
@@ -255,32 +243,10 @@ export default function App() {
     return result;
   }, [completed, preferences.showAssignments]);
 
-  const calendarEntries = useMemo<CalendarEntry[]>(() => preferences.showCalendar ? [
-    ...(eventsQuery.data ?? []).map((event) => ({...event, calendarType: "Google Calendar/Event" as const})),
-    ...(allDayEventsQuery.data ?? []).map((event) => ({...event, calendarType: "Google Calendar/All Day Event" as const})),
-  ] : [], [eventsQuery.data, allDayEventsQuery.data, preferences.showCalendar]);
-
-  const eventsByDay = useMemo(() => {
-    const result = new Map<string, CalendarEntry[]>();
-    for (const day of calendarDays) {
-      const key = dateKey(day);
-      const matches = calendarEntries.filter((event) => {
-        const range = event["Google Calendar/Dates"];
-        if (!range) return false;
-        const start = dateKey(range.start);
-        const end = dateKey(range.end);
-        return event.calendarType === "Google Calendar/Event" ? start <= key && end >= key : start <= key && end > key;
-      });
-      if (matches.length) result.set(key, matches.sort((a, b) => (a["Google Calendar/Dates"]?.start ?? "").localeCompare(b["Google Calendar/Dates"]?.start ?? "")));
-    }
-    return result;
-  }, [calendarDays, calendarEntries]);
-
   const maxMonthLoad = Math.max(1, ...calendarDays.filter((day) => isSameMonth(day, month)).map((day) => {
     const key = dateKey(day);
     return (workCounts.get(key)?.total ?? 0) + (completedAssignmentsByDay.get(key)?.length ?? 0);
   }));
-  const maxCalendarLoad = Math.max(1, ...calendarDays.filter((day) => isSameMonth(day, month)).map((day) => eventsByDay.get(dateKey(day))?.length ?? 0));
 
   const completionChart = useMemo(() => {
     const counts = new Map<string, number>();
@@ -333,7 +299,7 @@ export default function App() {
   });
 
   const loading = assignmentsQuery.isLoading || todosQuery.isLoading || coursesQuery.isLoading || completedQuery.isLoading;
-  const errors = [assignmentsQuery.error, todosQuery.error, coursesQuery.error, completedQuery.error, eventsQuery.error, allDayEventsQuery.error, assignmentStatesQuery.error, todoStatesQuery.error, completedPrioritiesQuery.error, completedCategoriesQuery.error, completedTypesQuery.error, paintsQuery.error, statusMutation.error].filter(Boolean);
+  const errors = [assignmentsQuery.error, todosQuery.error, coursesQuery.error, completedQuery.error, assignmentStatesQuery.error, todoStatesQuery.error, completedPrioritiesQuery.error, completedCategoriesQuery.error, completedTypesQuery.error, paintsQuery.error, statusMutation.error, yearMutation.error].filter(Boolean);
   const weekdayLabels = preferences.mondayFirst ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const queueTabs: QueueView[] = ["Today", "Upcoming", "All", "Completed", "Selected"];
 
@@ -341,11 +307,11 @@ export default function App() {
   function selectCalendarDay(day: Date) {setSelectedDate(day); setQueueView("Selected"); if (!isSameMonth(day, month)) setMonth(startOfMonth(day));}
 
   return (
-    <main className={cn("min-h-screen bg-background text-foreground", preferences.compact ? "text-[13px]" : "text-sm")}>
+    <main className={cn("bg-background text-foreground", preferences.compact ? "academic-compact text-[13px]" : "text-sm")}>
       <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
-        <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl highlight-aqua"><Sparkles className="size-5" /></span>
+            <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl highlight-aquamarine"><Sparkles className="size-5" /></span>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Academic dashboard</div>
               <h1 className="mt-0.5 text-2xl font-semibold tracking-tight sm:text-3xl">Good {today.getHours() < 12 ? "morning" : today.getHours() < 18 ? "afternoon" : "evening"}</h1>
@@ -359,16 +325,17 @@ export default function App() {
           </div>
         </header>
 
+        {preferenceError ? <p role="alert" className="mb-4 text-sm text-destructive">{preferenceError}</p> : null}
         {errors.length ? <div className="mb-5 rounded-lg border border-destructive bg-card p-4 text-destructive"><p className="font-semibold">Some data could not load.</p>{errors.map((error, index) => <p key={index} className="mt-1 break-words text-xs">{friendlyError(error)}</p>)}</div> : null}
 
-        <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(480px,1.1fr)]">
-          <div className="grid grid-cols-2 gap-3">
+        <section className="mb-6 space-y-5">
+          <div className="grid grid-cols-2 gap-4 2xl:grid-cols-4">
             <MetricCard icon={<CalendarCheck2 className="size-4" />} label="Due today" value={dueToday.length} detail={dueToday.length ? "Items due now" : "Clear today"} tone="highlight-yellow" />
             <MetricCard icon={<Layers3 className="size-4" />} label="Open workload" value={activeWork.length} detail={`${overdue.length} overdue`} tone="highlight-pink" />
             <MetricCard icon={<CheckCircle2 className="size-4" />} label="Completed today" value={completedToday.length} detail={`${monthCompleted} this month`} tone="highlight-green" />
             <MetricCard icon={<GraduationCap className="size-4" />} label="Total credits" value={totalCredits} detail={`${courses.length} courses`} tone="highlight-blue" />
           </div>
-          <NotesPanel />
+          {preferences.showNotes ? <NotesPanel /> : null}
         </section>
 
         <section className="mb-5 rounded-xl border bg-card p-4 shadow-sm sm:p-5">
@@ -378,33 +345,33 @@ export default function App() {
           </div>
           <div className="mb-3 flex flex-col gap-2 border-b pb-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1">
-              {queueTabs.map((tab) => <button key={tab} type="button" onClick={() => setQueueView(tab)} className={cn("rounded-md px-3 py-1.5 text-xs font-medium", queueView === tab ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>{tab === "Selected" ? format(selectedDate, "MMM d") : tab}</button>)}
+              {queueTabs.map((tab) => <button key={tab} type="button" onClick={() => {setQueueView(tab); setQueueLimit(50);}} aria-pressed={queueView === tab} className={cn("rounded-md px-3 py-1.5 text-xs font-medium", queueView === tab ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>{tab === "Selected" ? format(selectedDate, "MMM d") : tab}</button>)}
             </div>
-            <div className="flex gap-1">{(["All", "Assignment", "To-Do"] as const).map((source) => <button key={source} type="button" onClick={() => setSourceFilter(source)} className={cn("rounded-full border px-3 py-1 text-[11px] font-medium", sourceFilter === source ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}>{source === "All" ? "All sources" : source}</button>)}</div>
+            <div className="flex gap-1">{(["All", "Assignment", "To-Do"] as const).map((source) => <button key={source} type="button" onClick={() => {setSourceFilter(source); setQueueLimit(50);}} aria-pressed={sourceFilter === source} className={cn("rounded-full border px-3 py-1 text-[11px] font-medium", sourceFilter === source ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}>{source === "All" ? "All sources" : source}</button>)}</div>
           </div>
           <div>
             <div className="space-y-2">
-              {queueView !== "Completed" ? queueItems.map((item) => {
+              {queueView !== "Completed" ? queueItems.slice(0, queueLimit).map((item) => {
                 const states = item.type === "Assignment" ? assignmentStates : todoStates;
                 const rowTone = workRowTone(item.name, item.dueDate, todayKey);
                 const assessment = isAssessmentName(item.name);
                 const itemIsOverdue = Boolean(item.dueDate && item.dueDate < todayKey && !isDone(item.state));
                 const dueBadge = item.type === "Assignment" ? assignmentDueBadge(item.dueDate, todayKey) : null;
-                return <div key={`${item.type}-${item.id}`} className={cn("flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center", rowTone || "hover:bg-muted/40")}>
+                return <div key={`${item.type}-${item.id}`} className={cn("work-row flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center", rowTone || "hover:bg-muted/40")}>
                   <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", sourceTone(item.type))}>{item.type === "Assignment" ? <BookOpen className="size-4" /> : <ListTodo className="size-4" />}</span>
                   <button type="button" onClick={() => setEditingTask(item)} className="min-w-0 flex-1 text-left"><span className="flex flex-wrap items-center gap-2"><span className="min-w-0 truncate font-medium hover:underline">{item.name}</span>{itemIsOverdue ? <span className="inline-flex shrink-0 items-center gap-1 rounded-md border-2 border-current px-2 py-0.5 text-[10px] font-black tracking-wide"><AlertTriangle className="size-3" /> OVERDUE</span> : null}</span><span className={cn("mt-1 flex flex-wrap items-center gap-1.5 text-xs", !rowTone && "text-muted-foreground")}><span>{item.type}</span>{assessment ? <span className="rounded-md border border-current px-2 py-0.5 text-[11px] font-semibold">Assessment</span> : null}{item.contextId ? <DataBadge label={item.context} color={item.contextColor} /> : null}{item.type === "Assignment" && item.tagId ? <DataBadge label={item.tag} color={item.tagColor} /> : null}</span></button>
                   {dueBadge ? <span title={item.dueDate ? `Due ${format(parseISO(item.dueDate), "MMM d")}` : "No due date"} className={cn("shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-semibold", dueBadge.tone)}>{dueBadge.label}</span> : <span className={cn("shrink-0 text-xs", !rowTone && (item.dueDate && item.dueDate < todayKey && !isDone(item.state) ? "font-semibold text-red" : "text-muted-foreground"))}>{item.dueDate ? format(parseISO(item.dueDate), "MMM d") : "No due date"}</span>}
-                  <select disabled={statusMutation.isPending && statusMutation.variables?.item.id === item.id} value={item.stateId} onChange={(event) => statusMutation.mutate({item, stateId: event.target.value})} className={cn("min-w-30 rounded-md border px-2 py-1.5 text-xs font-medium outline-none disabled:opacity-60", stateTone(item.state))}>{states.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}</select>
+                  <select aria-label={`Status for ${item.name}`} disabled={statusMutation.isPending && statusMutation.variables?.item.id === item.id} value={item.stateId} onChange={(event) => statusMutation.mutate({item, stateId: event.target.value})} className={cn("min-w-30 rounded-md border px-2 py-1.5 text-xs font-medium outline-none disabled:opacity-60", stateTone(item.state))}>{states.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}</select>
                   <button type="button" onClick={() => setEditingTask(item)} className={cn("rounded-md border p-2", rowTone ? "hover:bg-background/20" : "text-muted-foreground hover:bg-accent")} aria-label={`Edit ${item.name}`}><Pencil className="size-3.5" /></button>
                 </div>;
-              }) : archivedQueueItems.map((item) => {
+              }) : archivedQueueItems.slice(0, queueLimit).map((item) => {
                 const type = item["University/Type"]?.["enum/name"] ?? "Completed work";
                 const isAssignment = type === "Assignment";
                 const context = isAssignment ? item["University/Course"]?.["University/Name"] : item["University/Category"]?.["enum/name"];
                 const contextColor = isAssignment ? paintsQuery.data?.courseColor : item["University/Category"]?.["enum/color"];
                 const priority = item["University/Priority"];
                 const assessment = isAssessmentName(item["University/Name"]);
-                return <div key={`completed-${item["fibery/id"]}`} className={cn("flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center", assessment ? "highlight-violet border-violet" : "hover:bg-muted/40")}>
+                return <div key={`completed-${item["fibery/id"]}`} className={cn("work-row flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center", assessment ? "highlight-violet border-violet" : "hover:bg-muted/40")}>
                   <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", sourceTone(type))}>{isAssignment ? <BookOpen className="size-4" /> : <ListTodo className="size-4" />}</span>
                   <button type="button" onClick={() => setEditingCompleted(item)} className="min-w-0 flex-1 text-left"><span className="block truncate font-medium hover:underline">{item["University/Name"]}</span><span className={cn("mt-1 flex flex-wrap items-center gap-1.5 text-xs", !assessment && "text-muted-foreground")}><span>{type}</span>{assessment ? <span className="rounded-md border border-current px-2 py-0.5 text-[11px] font-semibold">Assessment</span> : null}{context ? <DataBadge label={context} color={contextColor} /> : null}{isAssignment && priority ? <DataBadge label={priority["enum/name"]} color={priority["enum/color"]} /> : null}</span></button>
                   <span className={cn("shrink-0 text-xs", !assessment && "text-muted-foreground")}>{item["University/Completion Date"] ? `Completed ${format(parseISO(item["University/Completion Date"]!), "MMM d")}` : "Completion date not set"}</span>
@@ -412,21 +379,21 @@ export default function App() {
                   <button type="button" onClick={() => setEditingCompleted(item)} className="rounded-md border p-2 text-muted-foreground hover:bg-accent" aria-label={`Edit ${item["University/Name"]}`}><Pencil className="size-3.5" /></button>
                 </div>;
               })}
-              {!shownCount ? <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">No items in this view.</div> : null}
+              {!shownCount ? <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">A clear space for your next steps. Add an item or import your Fibery data.</div> : null}
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">{shownCount} items shown · {queueView === "Completed" ? "Completed uses the archive database, so deleted originals stay visible here." : "“Today” includes overdue and undated work so nothing actionable disappears."}</p>
+          {shownCount > queueLimit ? <button className="mt-3 rounded-lg border px-4 py-2 text-xs hover:bg-accent" onClick={() => setQueueLimit((limit) => limit + 50)}>Show 50 more</button> : null}
+          <p className="mt-3 text-xs text-muted-foreground">{Math.min(shownCount, queueLimit)} of {shownCount} items · {queueView === "Completed" ? "Your completed work stays here for reference." : "“Today” includes overdue and undated work so nothing actionable disappears."}</p>
         </section>
 
         <section className="mb-5 rounded-xl border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <SectionTitle icon={<CalendarDays className="size-4" />} title="Linked workload calendar" detail={preferences.showCalendar ? "Blue heat = synced Google Calendar event volume" : "Pink = open due work · green = completed assignments"} />
+            <SectionTitle icon={<CalendarDays className="size-4" />} title="Workload calendar" detail="Pink = open due work · green = completed assignments" />
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-1.5"><span className="text-xs font-medium">Google Calendar</span><Toggle checked={preferences.showCalendar} onChange={() => updatePreference("showCalendar", !preferences.showCalendar)} label="Show Google Calendar events" /></div>
-              <div className="flex items-center gap-1"><button type="button" onClick={() => changeMonth(subMonths(month, 1))} className="rounded-md border p-2 text-muted-foreground hover:bg-accent"><ChevronLeft className="size-4" /></button><button type="button" onClick={() => {setMonth(startOfMonth(today)); setSelectedDate(today); setQueueView("Today");}} className="min-w-32 rounded-md px-3 py-2 font-semibold hover:bg-accent">{format(month, "MMMM yyyy")}</button><button type="button" onClick={() => changeMonth(addMonths(month, 1))} className="rounded-md border p-2 text-muted-foreground hover:bg-accent"><ChevronRight className="size-4" /></button></div>
+              <div className="flex items-center gap-1"><button type="button" aria-label="Previous month" onClick={() => changeMonth(subMonths(month, 1))} className="rounded-md border p-2 text-muted-foreground hover:bg-accent"><ChevronLeft className="size-4" /></button><button type="button" onClick={() => {setMonth(startOfMonth(today)); setSelectedDate(today); setQueueView("Today");}} className="min-w-32 rounded-md px-3 py-2 font-semibold hover:bg-accent">{format(month, "MMMM yyyy")}</button><button type="button" aria-label="Next month" onClick={() => changeMonth(addMonths(month, 1))} className="rounded-md border p-2 text-muted-foreground hover:bg-accent"><ChevronRight className="size-4" /></button></div>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="overflow-x-auto pb-2"><div className="grid min-w-[630px] grid-cols-7 gap-1.5">
             {weekdayLabels.map((day, index) => <div key={day} className={cn("rounded-md bg-muted py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground", (preferences.mondayFirst ? index >= 5 : index === 0 || index === 6) && "highlight-aqua")}>{day}</div>)}
             {calendarDays.map((day) => {
               const key = dateKey(day);
@@ -435,23 +402,18 @@ export default function App() {
               const completedAssignments = completedAssignmentsByDay.get(key) ?? [];
               const workloadTotal = count.total + completedAssignments.length;
               const workPreviews = calendarWorkPreviews(tasks, completedAssignments);
-              const events = eventsByDay.get(key) ?? [];
-              const heatValue = preferences.showCalendar ? events.length : workloadTotal;
-              const heatMaximum = preferences.showCalendar ? maxCalendarLoad : maxMonthLoad;
+              const heatValue = workloadTotal;
+              const heatMaximum = maxMonthLoad;
               const level = heatValue ? Math.max(1, Math.ceil((heatValue / heatMaximum) * 5)) : 0;
               const weekend = day.getDay() === 0 || day.getDay() === 6;
               const hiddenWorkCount = Math.max(0, workloadTotal - workPreviews.length);
               const footerLabel = count.total ? `${count.total} due` : completedAssignments.length ? `${completedAssignments.length} done` : weekend ? "Weekend" : "";
               const breakdown = [count.assignments ? `${count.assignments}A` : "", count.todos ? `${count.todos}T` : "", completedAssignments.length ? `${completedAssignments.length}✓` : ""].filter(Boolean).join(" · ");
               return <div key={key} onClick={() => selectCalendarDay(day)} className={cn("relative flex min-h-40 cursor-pointer flex-col overflow-hidden rounded-lg border bg-card p-2 transition hover:-translate-y-0.5 hover:shadow-sm", !isSameMonth(day, month) && "opacity-35", weekend && "border-aqua", isSameDay(day, selectedDate) && "ring-2 ring-ring")}>
-                {preferences.showCalendar ? <span className={cn("pointer-events-none absolute inset-0", heatTone(level, "calendar"))} /> : <div className="pointer-events-none absolute inset-0 flex">{count.total ? <span className={heatTone(level, "work")} style={{flex: count.total}} /> : null}{completedAssignments.length ? <span className={heatTone(level, "completed")} style={{flex: completedAssignments.length}} /> : null}</div>}
+                {<div className="pointer-events-none absolute inset-0 flex">{count.total ? <span className={heatTone(level, "work")} style={{flex: count.total}} /> : null}{completedAssignments.length ? <span className={heatTone(level, "completed")} style={{flex: completedAssignments.length}} /> : null}</div>}
                 <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-                  <div className="mb-1.5 flex items-center justify-between"><span className={cn("grid size-6 place-items-center rounded-full text-xs font-medium", isToday(day) && "bg-primary text-primary-foreground")}>{format(day, "d")}</span>{preferences.showCalendar && events.length ? <span className="text-[9px] font-medium text-blue">{events.length} event{events.length === 1 ? "" : "s"}</span> : null}</div>
-                  {preferences.showCalendar ? <div className="space-y-1">{events.slice(0, 3).map((event) => {
-                    const start = event["Google Calendar/Dates"]?.start;
-                    const time = event.calendarType === "Google Calendar/Event" && start ? format(parseISO(start), "h:mm") : "All day";
-                    return <button key={`${event.calendarType}-${event["fibery/id"]}`} type="button" onClick={(click) => {click.stopPropagation(); openEntity({type: event.calendarType, publicId: event["fibery/public-id"]});}} className="block w-full truncate rounded px-1.5 py-1 text-left text-[9px] font-medium highlight-blue" title={`${event["Google Calendar/Name"]} · ${time}`}><span className="mr-1 opacity-70">{time}</span>{event["Google Calendar/Name"]}</button>;
-                  })}{events.length > 3 ? <p className="px-1 text-[9px] font-medium">+{events.length - 3} more events</p> : null}</div> : <div className="space-y-1">{workPreviews.map((preview) => {
+                  <div className="mb-1.5 flex items-center justify-between"><button type="button" aria-label={`View work for ${format(day, "MMMM d, yyyy")}`} aria-pressed={isSameDay(day, selectedDate)} onClick={() => selectCalendarDay(day)} className={cn("grid size-7 place-items-center rounded-full text-xs font-medium", isToday(day) && "bg-primary text-primary-foreground")}>{format(day, "d")}</button></div>
+                  <div className="space-y-1">{workPreviews.map((preview) => {
                     if (preview.kind === "completed") {
                       const courseName = preview.item["University/Course"]?.["University/Name"] ?? null;
                       const courseTag = courseSourceTag(courseName);
@@ -461,22 +423,23 @@ export default function App() {
                     const courseName = preview.item.type === "Assignment" ? preview.item.context : null;
                     const courseTag = courseSourceTag(courseName);
                     return <button key={`${preview.item.type}-${preview.item.id}`} type="button" onClick={(click) => {click.stopPropagation(); setEditingTask(preview.item);}} className={cn("block w-full truncate rounded px-1.5 py-1 text-left text-[9px] font-medium", social ? "highlight-pink border border-pink" : isAssessmentName(preview.item.name) ? "highlight-violet" : sourceTone(preview.item.type))} title={`${social ? "Social · " : courseName ? `${courseName} · ` : ""}${preview.item.type}: ${preview.item.name}`}>{social ? <Users className="mr-1 inline size-2.5" /> : courseTag ? <span className="mr-1 inline-flex rounded border-l-2 border-border bg-background px-1 py-0.5 text-[7px] font-bold leading-none tracking-[0.08em] text-foreground" style={paintsQuery.data?.courseColor ? {borderLeftColor: paintsQuery.data.courseColor} : undefined}>{courseTag}</span> : preview.item.type === "To-Do" ? <span className="mr-1 opacity-70">T</span> : null}{preview.item.name}</button>;
-                  })}{hiddenWorkCount ? <p className="px-1 text-[9px] font-medium">+{hiddenWorkCount} more work item{hiddenWorkCount === 1 ? "" : "s"}</p> : null}</div>}
+                  })}{hiddenWorkCount ? <p className="px-1 text-[9px] font-medium">+{hiddenWorkCount} more work item{hiddenWorkCount === 1 ? "" : "s"}</p> : null}</div>
                   <div className="mt-auto flex items-center justify-between border-t pt-2 text-[9px]"><span className="font-semibold">{footerLabel}</span>{breakdown ? <span>{breakdown}</span> : null}</div>
                 </div>
               </div>;
             })}
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-[11px] text-muted-foreground"><span>{preferences.showCalendar ? "Click a blue event to open its synced Google Calendar record; workload counts stay below it." : "Social to-dos headline each day; green entries open their completed archive records."}</span>{preferences.showCalendar ? <div className="flex items-center gap-1.5"><span>Less</span>{[0, 1, 2, 3, 4, 5].map((heatLevel) => <span key={heatLevel} className={cn("size-3 rounded-sm border bg-card", heatTone(heatLevel, "calendar"))} />)}<span>More events</span></div> : <div className="flex items-center gap-3"><span className="flex items-center gap-1.5"><span className={cn("size-3 rounded-sm border", heatTone(4, "work"))} />Open due</span><span className="flex items-center gap-1.5"><span className={cn("size-3 rounded-sm border", heatTone(4, "completed"))} />Completed assignment</span></div>}</div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3 text-[11px] text-muted-foreground"><span>Select a day to see its work. Select an item to edit it.</span><div className="flex items-center gap-3"><span className="flex items-center gap-1.5"><span className="size-3 rounded-sm highlight-pink" />Open due</span><span className="flex items-center gap-1.5"><span className="size-3 rounded-sm highlight-green" />Completed</span></div></div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,1fr)]">
-          <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+        <section className={cn("grid gap-5", preferences.showMomentum && preferences.showCourses && "2xl:grid-cols-2")}>
+          {preferences.showMomentum ? <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex items-start justify-between gap-3"><SectionTitle icon={<CheckCircle2 className="size-4" />} title="Monthly momentum" detail={`Completed work during ${format(month, "MMMM")}`} /><div className="text-right"><p className="text-2xl font-semibold">{monthCompleted}</p><p className="text-[10px] uppercase text-muted-foreground">completed</p></div></div>
             <DailyQuote />
             <div className="h-56"><ResponsiveContainer width="100%" height="100%"><AreaChart data={completionChart} margin={{top: 8, right: 8, bottom: 0, left: -24}}><defs><linearGradient id="completionFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--highlight-green-fg)" stopOpacity={0.55} /><stop offset="95%" stopColor="var(--highlight-green-bg)" stopOpacity={0.08} /></linearGradient></defs><CartesianGrid stroke="var(--border)" vertical={false} /><XAxis dataKey="label" axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(completionChart.length / 6) - 1)} tick={{fill: "var(--muted-foreground)", fontSize: 10}} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: "var(--muted-foreground)", fontSize: 10}} /><Tooltip content={<ChartTooltip />} cursor={{stroke: "var(--border)"}} /><Area type="monotone" dataKey="completed" stroke="var(--highlight-green-fg)" strokeWidth={2} fill="url(#completionFill)" /></AreaChart></ResponsiveContainer></div>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+          </div> : null}
+          {preferences.showCourses ? <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3"><SectionTitle icon={<GraduationCap className="size-4" />} title="Degree map" detail="Editable courses and credits by term" /><span className="rounded-full highlight-blue px-2.5 py-1 text-xs font-semibold">{totalCredits} credits</span></div>
             <div className="grid gap-3 sm:grid-cols-2">{courseGroups.map((group) => {
               const credits = group.courses.reduce((sum, course) => sum + (course["University/Credit Hours"] ?? 0), 0);
@@ -492,11 +455,11 @@ export default function App() {
                 </div>) : <p className="py-3 text-center text-xs text-muted-foreground">No courses in this term.</p>}</div>
               </div>;
             })}</div>
-          </div>
+          </div> : null}
         </section>
       </div>
 
-      {showSettings ? <SettingsPanel preferences={preferences} onChange={updatePreference} onReset={() => setPreferences(DEFAULT_PREFS)} onClose={() => setShowSettings(false)} /> : null}
+      {showSettings ? <SettingsPanel preferences={preferences} onChange={updatePreference} onReset={() => {try {localStorage.setItem(PREF_KEY, JSON.stringify(DEFAULT_PREFS)); setPreferences(DEFAULT_PREFS); setPreferenceError("");} catch {setPreferenceError("Preferences could not be saved.");}}} onClose={() => setShowSettings(false)} /> : null}
       {showQuickAdd ? <QuickAdd courses={courses} priorities={prioritiesQuery.data ?? []} categories={categoriesQuery.data ?? []} academicYears={academicYearsQuery.data ?? []} assignmentStates={assignmentStates} todoStates={todoStates} completionOptions={completionOptions} onClose={() => setShowQuickAdd(false)} /> : null}
       {editingTask ? <TaskEditor item={editingTask} courses={courses} priorities={prioritiesQuery.data ?? []} categories={categoriesQuery.data ?? []} assignmentStates={assignmentStates} todoStates={todoStates} completionOptions={completionOptions} onClose={() => setEditingTask(null)} /> : null}
       {editingCompleted ? <CompletedEditor item={editingCompleted} courses={courses} priorities={completedPrioritiesQuery.data ?? []} categories={completedCategoriesQuery.data ?? []} types={completedTypesQuery.data ?? []} onClose={() => setEditingCompleted(null)} /> : null}

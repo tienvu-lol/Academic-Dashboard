@@ -1,0 +1,21 @@
+import {StyleSheet} from 'react-native';
+export const colors = {background: '#201c1a', card: '#272321', sidebar: '#1b1816', field: '#37322f', border: '#423b36', text: '#e7ddd6', muted: '#b3a79e', teal: '#008eaa', mint: '#70d8c5', green: '#a3e635', red: '#f87171', purple: '#c4b5fd', grey: '#a8a29e', yellow: '#edcd7f'};
+export const styles = StyleSheet.create({
+  app: {flex: 1, flexDirection: 'row', backgroundColor: colors.background},
+  sidebar: {width: 218, padding: 20, backgroundColor: colors.sidebar, borderRightWidth: 1, borderRightColor: colors.border},
+  content: {flex: 1, minWidth: 0},
+  page: {padding: 28, gap: 20},
+  card: {backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 20, gap: 12},
+  title: {color: colors.text, fontSize: 28, fontWeight: '600'},
+  heading: {color: colors.text, fontSize: 17, fontWeight: '600'},
+  text: {color: colors.text, fontSize: 14},
+  muted: {color: colors.muted, fontSize: 12, lineHeight: 19},
+  eyebrow: {color: colors.muted, fontSize: 10, letterSpacing: 2, marginBottom: 6},
+  row: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10},
+  spread: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12},
+  input: {backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.text, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14},
+  label: {color: colors.muted, fontSize: 12, marginBottom: 6},
+  button: {borderRadius: 8, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 13, paddingVertical: 10, alignItems: 'center', justifyContent: 'center'},
+  active: {backgroundColor: '#233a33', borderColor: '#355146'},
+  badge: {borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.field},
+});

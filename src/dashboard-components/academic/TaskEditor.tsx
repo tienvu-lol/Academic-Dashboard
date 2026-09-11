@@ -1,10 +1,10 @@
-import {useRef, useState} from "react";
+﻿import {useRef, useState} from "react";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {ExternalLink, Trash2} from "lucide-react";
-import {TextEditor} from "@fibery/custom-app-text-editor";
-import "@fibery/custom-app-text-editor/style.css";
-import {deleteEntity, getDocument, getEntityById, openEntity, setDocument, updateEntity, type DocumentContentJson, type SelectOption} from "@/lib/fibery";
-import {Modal} from "@/components";
+import {Trash2} from "lucide-react";
+import {DescriptionEditor} from "@/dashboard-components/shared/DescriptionEditor";
+
+import {deleteEntity, getDocument, getEntityById, setDocument, updateEntity, type DocumentContentJson, type SelectOption} from "@/lib/fibery";
+import {Modal} from "@/dashboard-components/shared/components";
 import {friendlyError, type Assignment, type CompletedWork, type Course, type Todo, type WorkItem} from "@/dashboard";
 import {completeWorkItem, type CompletionOptions} from "@/completeWork";
 
@@ -87,6 +87,7 @@ export function TaskEditor({
       });
       if (descriptionQuery.data?.secret && descriptionDraft.current) {
         await setDocument({secret: descriptionQuery.data.secret, content: descriptionDraft.current});
+        queryClient.setQueryData(["task-description", type, item.id], {...descriptionQuery.data, content: descriptionDraft.current});
       }
       if (completing) return {completed: true as const, archive: await completeWorkItem(nextItem, completionOptions)};
       return {completed: false as const, archive: null};
@@ -134,11 +135,10 @@ export function TaskEditor({
           <span className="text-sm font-medium">Description</span>
           {descriptionQuery.isLoading ? <div className="min-h-28 animate-pulse rounded-md bg-muted" /> : descriptionQuery.data ? (
             <div className="min-h-32 cursor-text rounded-md border bg-background p-3">
-              <TextEditor key={item.id} defaultValue={descriptionQuery.data.content} placeholder="Add notes, links, or details…" onChange={(content) => {descriptionDraft.current = content;}} />
+              <DescriptionEditor key={item.id} defaultValue={descriptionQuery.data.content} placeholder="Add notes, links, or details…" onChange={(content) => {descriptionDraft.current = content;}} />
             </div>
           ) : <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No description document is available for this item.</p>}
         </div>
-        <button type="button" onClick={() => openEntity({type, publicId: item.publicId})} className="flex items-center gap-2 text-xs font-medium text-primary hover:underline"><ExternalLink className="size-3.5" /> Open description and full record</button>
         {(save.isError || remove.isError || descriptionQuery.isError) ? <p className="rounded-md border border-destructive p-3 text-xs text-destructive">{friendlyError(save.error ?? remove.error ?? descriptionQuery.error)}</p> : null}
         <div className="flex items-center justify-between border-t pt-4">
           <button type="button" disabled={remove.isPending} onClick={() => {if (window.confirm(`Delete “${item.name}”? This cannot be undone.`)) remove.mutate();}} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent disabled:opacity-50"><Trash2 className="size-4" /> Delete</button>
@@ -148,3 +148,4 @@ export function TaskEditor({
     </Modal>
   );
 }
+

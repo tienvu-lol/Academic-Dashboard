@@ -1,10 +1,10 @@
-import {useRef, useState} from "react";
+﻿import {useRef, useState} from "react";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
-import {ExternalLink, Trash2} from "lucide-react";
-import {TextEditor} from "@fibery/custom-app-text-editor";
-import "@fibery/custom-app-text-editor/style.css";
-import {deleteEntity, getDocument, getEntityById, openEntity, setDocument, updateEntity, type DocumentContentJson, type SelectOption} from "@/lib/fibery";
-import {Modal} from "@/components";
+import {Trash2} from "lucide-react";
+import {DescriptionEditor} from "@/dashboard-components/shared/DescriptionEditor";
+
+import {deleteEntity, getDocument, getEntityById, setDocument, updateEntity, type DocumentContentJson, type SelectOption} from "@/lib/fibery";
+import {Modal} from "@/dashboard-components/shared/components";
 import {friendlyError, type Course} from "@/dashboard";
 
 export function CourseEditor({course, academicYears, onClose}: {course: Course; academicYears: SelectOption[]; onClose: () => void}) {
@@ -42,14 +42,21 @@ export function CourseEditor({course, academicYears, onClose}: {course: Course; 
       });
       if (descriptionQuery.data?.secret && descriptionDraft.current) {
         await setDocument({secret: descriptionQuery.data.secret, content: descriptionDraft.current});
+        queryClient.setQueryData(["course-description", course["fibery/id"]], {...descriptionQuery.data, content: descriptionDraft.current});
       }
       return result;
     },
-    onSuccess: async () => {await queryClient.invalidateQueries({queryKey: ["courses"]}); onClose();},
+    onSuccess: async () => {
+      await Promise.all(["courses", "assignments", "completed-work"].map((key) => queryClient.invalidateQueries({queryKey: [key]})));
+      onClose();
+    },
   });
   const remove = useMutation({
     mutationFn: () => deleteEntity({type: "University/Courses", id: course["fibery/id"]}),
-    onSuccess: async () => {await queryClient.invalidateQueries({queryKey: ["courses"]}); onClose();},
+    onSuccess: async () => {
+      await Promise.all(["courses", "assignments", "completed-work"].map((key) => queryClient.invalidateQueries({queryKey: [key]})));
+      onClose();
+    },
   });
 
   return (
@@ -62,12 +69,12 @@ export function CourseEditor({course, academicYears, onClose}: {course: Course; 
         </div>
         <div className="space-y-1.5">
           <span className="text-sm font-medium">Description</span>
-          {descriptionQuery.isLoading ? <div className="min-h-28 animate-pulse rounded-md bg-muted" /> : descriptionQuery.data ? <div className="min-h-32 cursor-text rounded-md border bg-background p-3"><TextEditor key={course["fibery/id"]} defaultValue={descriptionQuery.data.content} placeholder="Add course notes, links, or details…" onChange={(content) => {descriptionDraft.current = content;}} /></div> : <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No description document is available for this course.</p>}
+          {descriptionQuery.isLoading ? <div className="min-h-28 animate-pulse rounded-md bg-muted" /> : descriptionQuery.data ? <div className="min-h-32 cursor-text rounded-md border bg-background p-3"><DescriptionEditor key={course["fibery/id"]} defaultValue={descriptionQuery.data.content} placeholder="Add course notes, links, or details…" onChange={(content) => {descriptionDraft.current = content;}} /></div> : <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">No description document is available for this course.</p>}
         </div>
-        <button type="button" onClick={() => openEntity({type: "University/Courses", publicId: course["fibery/public-id"]})} className="flex items-center gap-2 text-xs font-medium text-primary hover:underline"><ExternalLink className="size-3.5" /> Open full course record</button>
         {(save.isError || remove.isError || descriptionQuery.isError) ? <p className="rounded-md border border-destructive p-3 text-xs text-destructive">{friendlyError(save.error ?? remove.error ?? descriptionQuery.error)}</p> : null}
         <div className="flex items-center justify-between border-t pt-4"><button type="button" disabled={remove.isPending} onClick={() => {if (window.confirm(`Delete “${course["University/Name"]}”? Courses linked to work may be affected.`)) remove.mutate();}} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent"><Trash2 className="size-4" /> Delete</button><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Cancel</button><button type="submit" disabled={save.isPending} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{save.isPending ? "Saving…" : "Save changes"}</button></div></div>
       </form>
     </Modal>
   );
 }
+
