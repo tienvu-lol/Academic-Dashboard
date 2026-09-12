@@ -5,6 +5,9 @@
   "type": "module",
   "packageManager": "pnpm@9.4.0",
   "scripts": {
+    "native:install": "npm --prefix native ci",
+    "native:check": "npm --prefix native run typecheck && npm --prefix native test",
+    "native:build": "npm --prefix native run release",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "test": "node --import ./tests/register-ts.mjs --test tests/academic.test.mjs tests/internships.test.mjs",

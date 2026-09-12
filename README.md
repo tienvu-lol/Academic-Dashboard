@@ -1,5 +1,7 @@
 # Academic Dashboard
 
+The Windows React Native application is in [`native/`](native/README.md). Build the portable desktop package with `pnpm native:install`, then `pnpm native:build`. It stores data locally and imports backups from the web dashboard below.
+
 A local academic workspace and internship application tracker built with React, TypeScript, Vite, Tailwind CSS, React Query, and Recharts. The warm dark palette is defined in the app; it no longer relies on Fibery to provide colors, icons, or a hosted API.
 
 ## Run

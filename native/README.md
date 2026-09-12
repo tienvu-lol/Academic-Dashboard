@@ -1,97 +1,55 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+﻿# Academic Dashboard for Windows
 
-# Getting Started
+React Native Windows desktop app using React 19, Hermes bytecode, Windows file dialogs, and local JSON persistence. Release builds run without a browser, web server, account, or Metro. All native TSX lives under `src/dashboard-components`.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Run
 
-## Step 1: Start Metro
+Extract the entire portable ZIP and open `AcademicDashboard.exe`. Keep its DLLs and `Bundle` folder alongside it. Optionally run `powershell -ExecutionPolicy Bypass -File Install.ps1` from the extracted directory to install for the current user and add a Start menu shortcut. The portable app does not require Administrator access or Developer Mode. This unsigned x64 build is not a Microsoft Store release.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Data and migration
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+The live file is `%LOCALAPPDATA%\AcademicDashboard\workspace.json`, separate from the application installation. Saves stage a complete transaction, write and flush a temporary file, then replace the live file. Failed saves preserve the previous data. One app instance can run at a time. Files are ordinary JSON, not encrypted. Export backups regularly from **Import & backup**.
 
-```sh
-# Using npm
-npm start
+1. In the existing web dashboard, export the academic backup and internship backup separately.
+2. In the Windows app, choose the appropriate collection under **Import & backup** and select each JSON file.
+3. Review counts and warnings, then import. Existing records retain manual edits and history.
 
-# OR using Yarn
-yarn start
+Fibery CSV/JSON exports are accepted; import courses before assignments. Names, dates, course links, custom options, Markdown, and supported document JSON reuse the validated web import pipeline. Reference-only exports cannot supply document text absent from the export.
+
+For internships, manually download the raw README or JSON from [SimplifyJobs Summer 2027](https://github.com/SimplifyJobs/Summer2027-Internships), choose the snapshot date and initial availability, then preview. CSV and pasted content work too. No background fetching or scraping runs. External links open when clicked. Google Calendar import remains disabled.
+
+A complete desktop backup includes both databases and preferences. Imports merge records without removing existing ones. Corrupt live files are never automatically cleared; the recovery screen can export the existing file for inspection.
+
+## Features
+
+- Academics: tasks, courses, notes, Markdown descriptions, workload calendar, completion archive, monthly momentum, degree map, and page visibility/density controls.
+- Internships: custom opportunities, search, filters, manual open/closed availability, sent date, deadlines, accepted/rejected/ghosted outcomes, tags, notes, and links.
+- Semester chart: cumulative grey opportunities, lavender applications, glowing green acceptance, red rejection; configurable semester and application goal. Past-deadline pending applications are flagged for manual review.
+- Native virtualized record lists, memoized calculations, and a chart drawn with native views. Shared business logic remains in root `src/data`, `src/internships`, and `src/completeWork.ts`.
+
+## Build
+
+Required: Node 24, Visual Studio 2026 C++ desktop Build Tools (v145), Windows SDK 10.0.26100.0, and .NET 10 SDK. The script installs PowerShell 7.6.1 into project-local `.tools` if needed. Initial npm/NuGet dependency restores need internet access.
+
+From the repository root:
+
+```powershell
+pnpm native:install
+pnpm native:check
+pnpm native:build
 ```
 
-## Step 2: Build and run your app
+The release command creates a timestamped portable directory and ZIP in `native/releases`, including the Windows App SDK and compiled JavaScript. Build details go to `native/build-release.log`. The optional MSIX template remains in `windows/AcademicDashboard.Package`; the script builds the unpackaged executable.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+For development, run `npm start` inside `native`. In a second PowerShell terminal there:
 
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```powershell
+$env:Path = (Join-Path (Get-Location) '.tools') + ';' + $env:Path
+npm run windows
 ```
 
-### iOS
+Native storage tests: `npm test` inside `native`. Shared import/chart tests: `pnpm test` at root. For isolated testing, set `ACADEMIC_DASHBOARD_DATA_DIR` to a separate absolute directory before launching; close other instances first.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Boundaries
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+This migration targets Windows desktop. Native Markdown is edited as text; original rich document JSON is preserved. The desktop app cannot automatically access browser storage; exported backups are the migration bridge.

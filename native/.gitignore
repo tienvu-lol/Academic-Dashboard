@@ -1,6 +1,16 @@
 # OSX
 #
 .DS_Store
+.tools/
+.nuget/
+releases/
+artifacts/
+*.log
+windows/**/Bundle/
+windows/**/obj/
+windows/**/x64/
+windows/**/ARM64/
+windows/**/Win32/
 
 # Xcode
 #
