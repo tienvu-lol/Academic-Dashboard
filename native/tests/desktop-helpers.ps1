@@ -5,6 +5,9 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class DesktopInput {
+  [StructLayout(LayoutKind.Sequential)] public struct Point { public int X; public int Y; }
+  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(Point point);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
   [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr value);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
@@ -19,8 +22,12 @@ function Get-AppWindows {
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $script:appId)
     [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $condition)
 }
-function Find-Element([string]$name) {
+function Find-Element([string]$name, $controlType = $null) {
     $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $name)
+    if ($controlType) {
+        $typeCondition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $controlType)
+        $condition = New-Object System.Windows.Automation.AndCondition($condition, $typeCondition)
+    }
     for ($attempt = 0; $attempt -lt 25; $attempt++) {
         foreach ($window in (Get-AppWindows)) {
             $element = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
@@ -41,16 +48,10 @@ function Invoke-Element([string]$name) {
     throw "Element cannot be invoked: $name"
 }
 function Set-Field([string]$name, [string]$value) {
-    $element = Find-Element $name
-    if ($element.Current.ControlType -ne [System.Windows.Automation.ControlType]::Edit) {
-        foreach ($window in (Get-AppWindows)) {
-            $elements = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
-            $element = $elements | Where-Object { $_.Current.Name -eq $name -and $_.Current.ControlType -eq [System.Windows.Automation.ControlType]::Edit } | Select-Object -First 1
-            if ($element) { break }
-        }
-    }
+    $element = Find-Element $name ([System.Windows.Automation.ControlType]::Edit)
     $pattern = $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
     $pattern.SetValue($value)
+    Start-Sleep -Milliseconds 500
 }
 function Click-Element([string]$name) {
     $window = Get-AppWindows | Select-Object -First 1
@@ -60,7 +61,12 @@ function Click-Element([string]$name) {
     $element = Find-Element $name
     $bounds = $element.Current.BoundingRectangle
     if ($bounds.X -lt 0 -or $bounds.Y -lt 0) { throw "Element is outside the visible test window: $name" }
-    [DesktopInput]::SetCursorPos([int]($bounds.X + $bounds.Width / 2), [int]($bounds.Y + $bounds.Height / 2)) | Out-Null
+    $point = New-Object DesktopInput+Point
+    $point.X = [int]($bounds.X + $bounds.Width / 2); $point.Y = [int]($bounds.Y + $bounds.Height / 2)
+    [uint32]$ownerId = 0
+    [DesktopInput]::GetWindowThreadProcessId([DesktopInput]::WindowFromPoint($point), [ref]$ownerId) | Out-Null
+    if ($ownerId -ne $script:appId) { throw 'The test control is covered by another application; no click was sent.' }
+    [DesktopInput]::SetCursorPos($point.X, $point.Y) | Out-Null
     [DesktopInput]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     [DesktopInput]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 500

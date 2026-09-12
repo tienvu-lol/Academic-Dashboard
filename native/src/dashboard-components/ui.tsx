@@ -32,10 +32,6 @@ export function Button({
           (child) => typeof child === "string" || typeof child === "number",
         )
         .join("")}
-      accessibilityActions={[{ name: "activate" }]}
-      onAccessibilityAction={(event) => {
-        if (!disabled && event.nativeEvent.actionName === "activate") onPress();
-      }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -93,6 +89,7 @@ export function Choice({
           {options.map((option) => (
             <Pressable
               key={option.value}
+              accessibilityLabel={`${label}: ${option.label}`}
               accessibilityRole="button"
               onAccessibilityTap={() => {
                 onChange(option.value);

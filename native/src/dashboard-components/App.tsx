@@ -36,8 +36,6 @@ function Dashboard() {
             accessibilityRole="tab"
             onAccessibilityTap={() => setPage(tab.id)}
             accessibilityLabel={tab.label}
-            accessibilityActions={[{ name: "activate" }]}
-            onAccessibilityAction={() => setPage(tab.id)}
             accessibilityState={{ selected: page === tab.id }}
             onPress={() => setPage(tab.id)}
             style={[

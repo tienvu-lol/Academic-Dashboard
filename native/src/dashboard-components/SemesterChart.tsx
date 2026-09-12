@@ -36,10 +36,11 @@ export function SemesterChart({
       ).length,
     [items, settings],
   );
-  const max = Math.max(
+  const observedMax = Math.max(
     4,
     ...data.flatMap((point) => lines.map((line) => point[line.key] ?? 0)),
   );
+  const max = Math.ceil(observedMax / 4) * 4;
   const height = 220;
   const segments = useMemo(
     () =>
