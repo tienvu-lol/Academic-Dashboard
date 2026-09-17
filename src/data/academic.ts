@@ -1,4 +1,4 @@
-/** Local academic repository. UI code uses lib/fibery as a migration adapter. */
+/** Local academic repository. UI code uses lib/fibery as a compatibility adapter. */
 export const ACADEMIC_STORAGE_KEY = "academic-dashboard.academic.v1";
 export const ACADEMIC_TYPES = ["University/Courses", "University/Assignments", "University/To-Dos", "University/Completed Work", "University/Dashboard Notes"] as const;
 export type AcademicType = typeof ACADEMIC_TYPES[number];
@@ -15,11 +15,10 @@ export type AcademicData = {
   options: Record<string, LocalOption[]>;
 };
 
-/** Replace this small boundary with a native persistence adapter during migration. */
 export interface AcademicStorageAdapter {read(): string | null; write(value: string): void}
 let adapter: AcademicStorageAdapter = {
-  read: () => localStorage.getItem(ACADEMIC_STORAGE_KEY),
-  write: (value) => localStorage.setItem(ACADEMIC_STORAGE_KEY, value),
+  read: () => {throw new Error("Native academic storage has not been configured.");},
+  write: () => {throw new Error("Native academic storage has not been configured.");},
 };
 let cachedRaw: string | null | undefined;
 let cachedData: AcademicData | undefined;
@@ -94,7 +93,7 @@ export function validateAcademicData(value: unknown): asserts value is AcademicD
 }
 export function readAcademicData(): AcademicData {
   let raw: string | null;
-  try {raw = adapter.read();} catch {throw new Error("Local academic storage is unavailable. Enable browser storage to save your work.");}
+  try {raw = adapter.read();} catch {throw new Error("Local academic storage is unavailable.");}
   if (raw === cachedRaw && cachedData) return structuredClone(cachedData);
   if (raw === null) return emptyAcademicData();
   try {
@@ -111,9 +110,8 @@ export function mutateAcademicData<T>(change: (data: AcademicData) => T): T {
   data.updatedAt = new Date().toISOString();
   validateAcademicData(data);
   const raw = JSON.stringify(data);
-  try {adapter.write(raw);} catch {throw new Error("Academic data could not be saved. Browser storage may be full or disabled. Your previous saved data is unchanged; export a backup before retrying.");}
+  try {adapter.write(raw);} catch {throw new Error("Academic data could not be saved. Your previous saved data is unchanged; export a backup before retrying.");}
   cachedRaw = raw; cachedData = data;
-  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") window.dispatchEvent(new Event("academic-data-changed"));
   return result;
 }
 export function emptyDocument(): DocumentContentJson {return {comments: [], doc: {type: "doc", content: [{type: "paragraph"}]}};}

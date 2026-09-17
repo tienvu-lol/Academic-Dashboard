@@ -103,23 +103,6 @@ export const DEFAULT_PREFS: Preferences = {
   showCourses: true,
 };
 
-export const PREF_KEY = "university-command-center-preferences";
-
-export function readPreferences(): Preferences {
-  try {
-    const saved = localStorage.getItem(PREF_KEY);
-    const parsed = saved ? JSON.parse(saved) : {};
-    const preferences = {...DEFAULT_PREFS};
-    for (const key of Object.keys(DEFAULT_PREFS) as Array<keyof Preferences>) {
-      if (typeof parsed?.[key] === "boolean") preferences[key] = parsed[key];
-    }
-    // Keep legacy preferences compatible without re-enabling the integration.
-    return {...preferences, showCalendar: false};
-  } catch {
-    return DEFAULT_PREFS;
-  }
-}
-
 export function dateKey(value: Date | string) {
   if (typeof value === "string") {
     if (!value.includes("T")) return value.slice(0, 10);

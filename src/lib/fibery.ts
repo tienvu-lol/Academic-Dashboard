@@ -99,6 +99,3 @@ export async function setDocument({secret, content}: {secret: string; content: D
   mutateAcademicData((data) => {if (!data.documents[secret]) throw new Error("This description no longer exists."); data.documents[secret] = structuredClone(content);});
 }
 export async function getSchema() {return {getTypeObjectByName: (type: string) => ({name: type, color: type === "University/Courses" ? "#9abde8" : "#aaa09a"})};}
-export async function openEntity(args: {type: string; publicId: string}): Promise<void> {
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("academic-open-record", {detail: args}));
-}

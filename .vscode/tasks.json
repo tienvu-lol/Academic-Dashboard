@@ -2,10 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Dashboard: Start development server",
+      "label": "Dashboard: Run Windows app",
       "type": "shell",
-      "command": "pnpm dev",
-      "isBackground": true,
+      "command": "npm run dev",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -15,14 +14,14 @@
     {
       "label": "Dashboard: Type-check",
       "type": "shell",
-      "command": "pnpm typecheck",
+      "command": "npm run typecheck",
       "problemMatcher": ["$tsc"],
       "group": "build"
     },
     {
-      "label": "Dashboard: Production build",
+      "label": "Dashboard: Release build",
       "type": "shell",
-      "command": "pnpm build",
+      "command": "npm run build",
       "problemMatcher": [],
       "group": {
         "kind": "build",

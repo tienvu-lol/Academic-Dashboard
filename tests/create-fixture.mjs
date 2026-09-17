@@ -1,0 +1,16 @@
+import {mkdir, writeFile} from 'node:fs/promises';
+import {configureAcademicStorage, emptyAcademicData, readAcademicData} from '../src/data/academic.ts';
+import {createEntity} from '../src/lib/fibery.ts';
+import {DEFAULT_PREFS} from '../src/dashboard.ts';
+import {createInternship, emptyDatabase, todayLocal} from '../src/internships/model.ts';
+let raw = JSON.stringify(emptyAcademicData());
+configureAcademicStorage({read: () => raw, write: value => {raw = value;}});
+const course = await createEntity({type: 'University/Courses', values: {'University/Name': 'Native test course', 'University/Credit Hours': 3}});
+await createEntity({type: 'University/Assignments', values: {'University/Name': 'Native test assignment', 'University/Due Date': todayLocal(), 'University/Course': {'fibery/id': course['fibery/id']}}});
+const internships = emptyDatabase();
+internships.internships = ['accepted', 'rejected', 'pending'].map((outcome, index) => ({...createInternship('2026-09-01'), company: ['Accepted test company', 'Rejected test company', 'Pending test company'][index], role: 'Software intern', listedDate: '2026-09-01', appliedDate: '2026-09-02', deadline: '2026-09-05', outcome, outcomeDate: outcome === 'pending' ? '' : '2026-09-10'}));
+const directory = new URL('../artifacts/smoke-data/', import.meta.url);
+await mkdir(directory, {recursive: true});
+await writeFile(new URL('workspace.json', directory), JSON.stringify({format: 'academic-dashboard-windows', version: 1, academic: readAcademicData(), internships, preferences: {...DEFAULT_PREFS}}));
+await writeFile(new URL('../import-fixture.csv', directory), 'Company,Role,Location\nImported test company,Native intern,Remote\n');
+console.log('Created isolated native smoke fixtures.');

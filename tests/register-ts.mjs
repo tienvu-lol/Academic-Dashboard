@@ -1,4 +1,4 @@
-// Node 24 strips TypeScript; resolve the same local aliases used by Vite.
+// Node 24 strips TypeScript; resolve local source aliases for model tests.
 import {registerHooks} from "node:module";
 import {existsSync} from "node:fs";
 import {fileURLToPath} from "node:url";

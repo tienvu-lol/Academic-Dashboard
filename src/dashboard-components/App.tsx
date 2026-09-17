@@ -1,75 +1,135 @@
-import {lazy, Suspense, useEffect, useState} from "react";
-import {BookOpen, BriefcaseBusiness, ChevronLeft, Database, HardDrive, LayoutDashboard, Menu, Sparkles, X} from "lucide-react";
-import {cn} from "@/lib/cn";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import {
+  initialize,
+  exportWorkspace,
+  useWorkspace,
+} from "../platform/workspace";
+import { Academics } from "./Academics";
+import { Internships } from "./Internships";
+import { Imports } from "./Imports";
+import { Button } from "./ui";
+import { colors, styles as s } from "./theme";
 
-const AcademicPage = lazy(() => import("./academic/AcademicPage"));
-const InternshipPage = lazy(() => import("./internships/InternshipPage"));
-const DataManagement = lazy(() => import("./data/DataManagement"));
-
-// Add pages here as the workspace grows. Each page owns its UI and data model.
-const pages = [
-  {id: "academic", label: "Academic dashboard", short: "Academics", icon: LayoutDashboard},
-  {id: "internships", label: "Internship applications", short: "Internships", icon: BriefcaseBusiness},
-  {id: "data", label: "Import & backup", short: "Import & backup", icon: Database},
-] as const;
-type PageId = typeof pages[number]["id"];
-
-function currentPage(): PageId {
-  const hash = window.location.hash.slice(1);
-  return pages.find((page) => page.id === hash)?.id ?? "academic";
-}
-
-export default function App() {
-  const [page, setPage] = useState<PageId>(currentPage);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
+function Dashboard() {
+  const [page, setPage] = useState("academics");
+  const state = useWorkspace();
   useEffect(() => {
-    const navigate = () => {setPage(currentPage()); setMobileOpen(false);};
-    window.addEventListener("hashchange", navigate);
-    return () => window.removeEventListener("hashchange", navigate);
+    void initialize();
   }, []);
-
   return (
-    <div className={cn("workspace", collapsed && "workspace-collapsed")}>
-      <a href="#page-content" className="skip-link">Skip to content</a>
-      <div className="mobile-header">
-        <span className="flex items-center gap-2 font-semibold"><Sparkles className="size-5 text-aquamarine" /> Academic workspace</span>
-        <button className="rounded-lg border p-2" aria-label={mobileOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}</button>
-      </div>
-      <aside className={cn("workspace-sidebar", mobileOpen && "is-open")} aria-label="Workspace sidebar">
-        <a href="#academic" className="sidebar-brand" aria-label="Academic workspace home">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl highlight-aquamarine"><Sparkles className="size-5" /></span>
-          <span className="sidebar-expanded"><strong className="block text-sm font-semibold">Academic</strong><span className="text-xs text-muted-foreground">Your personal workspace</span></span>
-        </a>
-        <div className="sidebar-expanded mb-3 mt-10 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workspace</div>
-        <nav aria-label="Main navigation" className="space-y-1.5">
-          {pages.map(({id, label, short, icon: Icon}, index) => (
-            <a key={id} href={`#${id}`} onClick={() => setMobileOpen(false)} aria-current={page === id ? "page" : undefined} title={label} className={cn("sidebar-link", page === id && "is-active")}>
-              <Icon className="size-[18px] shrink-0" /><span className="sidebar-expanded flex-1">{short}</span><span className="sidebar-expanded text-[10px] opacity-50">0{index + 1}</span>
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-expanded mt-8 rounded-xl border border-sidebar-border bg-background/40 p-4">
-          <BookOpen className="mb-3 size-4 text-muted-foreground" />
-          <p className="text-xs font-medium">A little progress, every day.</p>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">Your courses, plans, and next opportunities in one place.</p>
-        </div>
-        <div className="mt-auto pt-10">
-          <div className="flex items-center gap-2 border-t border-sidebar-border px-3 pt-5 text-xs text-muted-foreground" title="Records are stored in this browser">
-            <HardDrive className="size-4 shrink-0 text-aquamarine" /><span className="sidebar-expanded">Stored on this device</span>
-          </div>
-          <button className="sidebar-collapse mt-4 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-accent" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <ChevronLeft className={cn("size-4 shrink-0", collapsed && "rotate-180")} /><span className="sidebar-expanded">Collapse sidebar</span>
-          </button>
-        </div>
-      </aside>
-      <div className="workspace-content" id="page-content" tabIndex={-1}>
-        <div className="workspace-topbar"><span>My workspace <span className="mx-2 opacity-40">/</span> <span className="text-foreground">{pages.find((item) => item.id === page)?.short}</span></span><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-[var(--highlight-aquamarine-fg)]" /> Local workspace</span></div>
-        <Suspense fallback={<div role="status" className="p-8 text-sm text-muted-foreground">Opening your workspace…</div>}>
-          {page === "academic" ? <AcademicPage /> : page === "internships" ? <InternshipPage /> : <DataManagement />}
-        </Suspense>
-      </div>
-    </div>
+    <View style={s.app}>
+      <View style={s.sidebar}>
+        <Text style={[s.eyebrow, { color: colors.mint }]}>
+          PERSONAL WORKSPACE
+        </Text>
+        <Text style={[s.heading, { marginBottom: 32 }]}>
+          Academic Dashboard
+        </Text>
+        {[
+          { id: "academics", label: "01   Academics" },
+          { id: "internships", label: "02   Internships" },
+          { id: "imports", label: "03   Import & backup" },
+        ].map((tab) => (
+          <Pressable
+            key={tab.id}
+            accessibilityRole="tab"
+            onAccessibilityTap={() => setPage(tab.id)}
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: page === tab.id }}
+            onPress={() => setPage(tab.id)}
+            style={[
+              s.button,
+              { alignItems: "flex-start", marginBottom: 10 },
+              page === tab.id && s.active,
+            ]}
+          >
+            <Text style={[s.text, page === tab.id && { color: colors.mint }]}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+        <View style={{ flex: 1 }} />
+        <Text style={s.muted}>Stored locally on Windows</Text>
+        <Text style={[s.muted, { marginTop: 8 }]}>
+          Calendar import disabled
+        </Text>
+      </View>
+      <View style={s.content}>
+        <View
+          style={[
+            s.spread,
+            {
+              paddingHorizontal: 28,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={s.muted}>WORKSPACE / {page.toUpperCase()}</Text>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[s.muted, { color: colors.mint }]}
+          >
+            {state.busy ? "Saving…" : state.notice || "Local workspace"}
+          </Text>
+        </View>
+        {!!state.error && (
+          <View style={{ padding: 16, backgroundColor: "#492b29" }}>
+            <Text selectable accessibilityLiveRegion="assertive" style={s.text}>
+              {state.error}
+            </Text>
+          </View>
+        )}
+        {!state.ready ? (
+          <View style={s.page}>
+            {state.busy ? (
+              <ActivityIndicator color={colors.mint} />
+            ) : (
+              <>
+                <Text style={s.heading}>
+                  Your workspace could not be opened
+                </Text>
+                <View style={s.row}>
+                  <Button onPress={() => void initialize()}>Try again</Button>
+                  <Button onPress={() => void exportWorkspace()}>
+                    Export existing file for recovery
+                  </Button>
+                </View>
+              </>
+            )}
+          </View>
+        ) : page === "academics" ? (
+          <Academics />
+        ) : page === "internships" ? (
+          <Internships onImport={() => setPage("imports")} />
+        ) : (
+          <Imports />
+        )}
+      </View>
+    </View>
   );
+}
+export default class App extends React.Component<{}, { error: string }> {
+  state = { error: "" };
+  static getDerivedStateFromError(error: Error) {
+    return { error: error.message };
+  }
+  render() {
+    return this.state.error ? (
+      <View style={[s.app, s.page, { flexDirection: "column" }]}>
+        <Text style={s.title}>The dashboard encountered an error</Text>
+        <Text selectable style={s.text}>
+          {this.state.error}
+        </Text>
+        <Button onPress={() => this.setState({ error: "" })}>
+          Reload interface
+        </Button>
+        <Button onPress={() => void exportWorkspace()}>Export backup</Button>
+      </View>
+    ) : (
+      <Dashboard />
+    );
+  }
 }
