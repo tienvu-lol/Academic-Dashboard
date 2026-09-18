@@ -1,129 +1,101 @@
-import React, { useState, type ReactNode } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from "react-native";
-import { colors, styles as s } from "./theme";
+import { useState, type ReactNode } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, type StyleDesc } from "@gpuix/react";
+import { colors, gpuixTheme, mergeStyles, styles } from "./theme";
 import { useWorkspace } from "../platform/workspace";
-export function Button({
-  children,
-  onPress,
-  primary = false,
-  disabled = false,
-}: {
+
+export function Button({ children, onPress, primary = false, disabled = false, style }: {
   children: ReactNode;
   onPress: () => void;
   primary?: boolean;
   disabled?: boolean;
+  style?: StyleDesc;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onAccessibilityTap={() => {
-        if (!disabled) onPress();
-      }}
-      accessibilityLabel={React.Children.toArray(children)
-        .filter(
-          (child) => typeof child === "string" || typeof child === "number",
-        )
-        .join("")}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        s.button,
+    <div
+      role="button"
+      tabIndex={disabled ? undefined : 0}
+      aria-label={typeof children === "string" ? children : undefined}
+      onClick={() => { if (!disabled) onPress(); }}
+      style={mergeStyles(
+        styles.button,
         primary && { backgroundColor: colors.teal, borderColor: colors.teal },
-        { opacity: disabled ? 0.4 : pressed ? 0.65 : 1 },
-      ]}
+        disabled && { opacity: 0.4, cursor: "not-allowed" },
+        style,
+      )}
     >
-      <Text style={[s.text, { fontSize: 12 }, primary && { color: "#fff" }]}>
-        {children}
-      </Text>
-    </Pressable>
+      <text style={{ color: primary ? "#ffffff" : colors.text, fontSize: 12 }}>{children}</text>
+    </div>
   );
 }
-export function Field({ label, ...props }: TextInputProps & { label: string }) {
+
+export function Field({ label, value, onChange, placeholder, multiline = false, style }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  style?: StyleDesc;
+}) {
+  const shared = {
+    value,
+    placeholder,
+    theme: gpuixTheme,
+    onChange: (event: { value?: unknown }) => onChange(String(event.value ?? "")),
+    style: mergeStyles(styles.input, multiline && { minHeight: 110 }, style),
+    tabIndex: 0,
+    "aria-label": label,
+  };
   return (
-    <View style={{ gap: 4, marginBottom: 12 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor={colors.muted}
-        {...props}
-        style={[
-          s.input,
-          props.multiline && { minHeight: 100, textAlignVertical: "top" },
-          props.style,
-        ]}
-      />
-    </View>
+    <div style={{ gap: 4, marginBottom: 10 }}>
+      <text style={styles.label}>{label}</text>
+      {multiline ? <textarea {...shared} minRows={4} maxRows={12} /> : <input {...shared} />}
+    </div>
   );
 }
-export function Choice({
-  label,
-  value,
-  options,
-  onChange,
-}: {
+
+export function Choice({ label, value, options, onChange }: {
   label: string;
   value: string;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={s.label}>{label}</Text>
-      <Button onPress={() => setOpen(!open)}>
-        {options.find((option) => option.value === value)?.label ??
-          value ??
-          "Choose"}{" "}
-        ▾
-      </Button>
-      {open && (
-        <ScrollView style={{ maxHeight: 200, backgroundColor: colors.field }}>
+    <div style={{ marginBottom: 10, gap: 4 }}>
+      <text style={styles.label}>{label}</text>
+      <Select items={options} value={value} onValueChange={onChange}>
+        <SelectTrigger style={styles.button} aria-label={label}>
+          <SelectValue placeholder="Choose" />
+        </SelectTrigger>
+        <SelectContent style={{ ...styles.card, maxHeight: 260, overflowY: "scroll", backgroundColor: colors.cardRaised }}>
           {options.map((option) => (
-            <Pressable
+            <SelectItem
               key={option.value}
-              accessibilityLabel={`${label}: ${option.label}`}
-              accessibilityRole="button"
-              onAccessibilityTap={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              accessibilityState={{ selected: value === option.value }}
-              onPress={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              style={{ padding: 10 }}
+              value={option.value}
+              style={({ selected, highlighted }) => mergeStyles(
+                styles.button,
+                selected && styles.active,
+                highlighted && { backgroundColor: colors.field },
+              )}
             >
-              <Text
-                style={[
-                  s.text,
-                  value === option.value && { color: colors.mint },
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
+              <text style={{ color: value === option.value ? colors.mint : colors.text }}>{option.label}</text>
+            </SelectItem>
           ))}
-        </ScrollView>
-      )}
-    </View>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
-export function Dialog({
-  title,
-  children,
-  onClose,
-  dirty = false,
-  disabled = false,
-}: {
+
+export function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div style={styles.row}>
+      <Button onPress={() => onChange(!value)} primary={value}>{value ? "On" : "Off"}</Button>
+      <text style={styles.text}>{label}</text>
+    </div>
+  );
+}
+
+export function Dialog({ title, children, onClose, dirty = false, disabled = false }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
@@ -132,87 +104,37 @@ export function Dialog({
 }) {
   const { error } = useWorkspace();
   const [discard, setDiscard] = useState(false);
-  const close = () => {
-    if (!disabled) dirty ? setDiscard(true) : onClose();
-  };
+  const close = () => { if (!disabled) dirty ? setDiscard(true) : onClose(); };
   return (
-    <Modal transparent visible animationType="none" onRequestClose={close}>
-      <View
-        style={{
-          flex: 1,
-          padding: 24,
-          backgroundColor: "#000b",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <View
-          style={[s.card, { width: "100%", maxWidth: 760, maxHeight: "92%" }]}
-        >
-          <View style={s.spread}>
-            <Text accessibilityRole="header" style={s.heading}>
-              {title}
-            </Text>
-            <Button disabled={disabled} onPress={close}>
-              Close
-            </Button>
-          </View>
-          {!!error && (
-            <Text
-              selectable
-              accessibilityLiveRegion="assertive"
-              style={{ color: colors.red }}
-            >
-              {error}
-            </Text>
-          )}
-          {discard ? (
-            <View style={{ gap: 14 }}>
-              <Text style={s.text}>Discard unsaved changes?</Text>
-              <View style={s.row}>
-                <Button onPress={onClose}>Discard</Button>
-                <Button primary onPress={() => setDiscard(false)}>
-                  Keep editing
-                </Button>
-              </View>
-            </View>
-          ) : (
-            <ScrollView keyboardShouldPersistTaps="handled">
-              {children}
-            </ScrollView>
-          )}
-        </View>
-      </View>
-    </Modal>
+    <div style={{ ...styles.card, backgroundColor: colors.cardRaised, marginBottom: 18 }}>
+      <div style={styles.spread}>
+        <text role="heading" aria-level={2} style={styles.heading}>{title}</text>
+        <Button disabled={disabled} onPress={close}>Close</Button>
+      </div>
+      {error ? <text style={{ ...styles.text, color: colors.red }}>{error}</text> : null}
+      {discard ? (
+        <div style={{ gap: 12 }}>
+          <text style={styles.text}>Discard unsaved changes?</text>
+          <div style={styles.row}>
+            <Button onPress={onClose}>Discard</Button>
+            <Button primary onPress={() => setDiscard(false)}>Keep editing</Button>
+          </div>
+        </div>
+      ) : children}
+    </div>
   );
 }
-export function Metrics({
-  items,
-}: {
-  items: Array<{
-    label: string;
-    value: number;
-    detail?: string;
-    color?: string;
-  }>;
-}) {
+
+export function Metrics({ items }: { items: Array<{ label: string; value: number; detail?: string; color?: string }> }) {
   return (
-    <View style={[s.row, { alignItems: "stretch" }]}>
+    <div style={{ ...styles.row, alignItems: "stretch" }}>
       {items.map((item) => (
-        <View key={item.label} style={[s.card, { flex: 1, minWidth: 140 }]}>
-          <Text style={s.muted}>{item.label}</Text>
-          <Text
-            style={{
-              fontSize: 30,
-              color: item.color ?? colors.text,
-              fontWeight: "600",
-            }}
-          >
-            {item.value}
-          </Text>
-          {item.detail && <Text style={s.muted}>{item.detail}</Text>}
-        </View>
+        <div key={item.label} style={{ ...styles.card, flexGrow: 1, minWidth: 140 }}>
+          <text style={styles.muted}>{item.label}</text>
+          <text style={{ fontSize: 30, color: item.color ?? colors.text, fontWeight: 650 }}>{item.value}</text>
+          {item.detail ? <text style={styles.muted}>{item.detail}</text> : null}
+        </div>
       ))}
-    </View>
+    </div>
   );
 }

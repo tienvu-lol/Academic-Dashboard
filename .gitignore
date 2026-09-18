@@ -6,6 +6,13 @@
 node_modules/
 .bun/
 
+# Local Bun SQL data
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite.backup.json
+
 # Generated output
 dist/
 build/

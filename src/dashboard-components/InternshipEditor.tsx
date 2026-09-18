@@ -1,189 +1,51 @@
-import React, { useState } from "react";
-import { Text, View } from "react-native";
-import {
-  type Internship,
-  validateInternship,
-} from "../internships/model";
+import { useMemo, useState } from "react";
+import { createInternship, todayLocal, validateInternship, type Internship, type Outcome } from "../internships/model";
 import { transact, useWorkspace } from "../platform/workspace";
 import { Button, Choice, Dialog, Field } from "./ui";
-import { colors, styles as s } from "./theme";
+import { colors, styles } from "./theme";
 
-export function InternshipEditor({
-  item,
-  onClose,
-}: {
-  item: Internship;
-  onClose: () => void;
-}) {
-  const [draft, setDraft] = useState(item);
-  const [tags, setTags] = useState(item.tags.join(", "));
+export function InternshipEditor({ internship, onClose }: { internship?: Internship; onClose: () => void }) {
+  const { busy } = useWorkspace();
+  const initial = useMemo(() => structuredClone(internship ?? createInternship()), [internship]);
+  const [draft, setDraft] = useState(initial);
   const [error, setError] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const { data, busy } = useWorkspace();
-  const exists = data.internships.internships.some((row) => row.id === item.id);
-  const update = (key: keyof Internship, value: string) =>
-    setDraft({ ...draft, [key]: value });
+  const set = <K extends keyof Internship>(key: K, value: Internship[K]) => setDraft((current) => ({ ...current, [key]: value }));
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+
   async function save() {
-    const next = {
-      ...draft,
-      updatedAt: new Date().toISOString(),
-      company: draft.company.trim(),
-      role: draft.role.trim(),
-      outcomeDate: draft.outcome === "pending" ? "" : draft.outcomeDate,
-      tags: [
-        ...new Set(
-          tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-        ),
-      ],
-    };
+    const next = { ...draft, updatedAt: todayLocal() };
     const problem = validateInternship(next);
-    if (problem) {
-      setError(problem);
-      return;
-    }
-    if (
-      await transact((workspace) => {
-        const rows = workspace.internships.internships;
-        workspace.internships.internships = exists
-          ? rows.map((row) => (row.id === next.id ? next : row))
-          : [...rows, next];
-      })
-    )
-      onClose();
+    if (problem) { setError(problem); return; }
+    const saved = await transact((workspace) => {
+      const index = workspace.internships.internships.findIndex((item) => item.id === next.id);
+      if (index >= 0) workspace.internships.internships[index] = next;
+      else workspace.internships.internships.push(next);
+    }, "Internship saved to Bun SQL.");
+    if (saved) onClose();
   }
+
   return (
-    <Dialog
-      title={exists ? "Edit internship" : "Add internship"}
-      onClose={onClose}
-      dirty={
-        JSON.stringify(draft) !== JSON.stringify(item) ||
-        tags !== item.tags.join(", ")
-      }
-      disabled={busy}
-    >
-      <Field
-        label="Company"
-        value={draft.company}
-        onChangeText={(value) => update("company", value)}
-      />
-      <Field
-        label="Role"
-        value={draft.role}
-        onChangeText={(value) => update("role", value)}
-      />
-      <Field
-        label="Location"
-        value={draft.location}
-        onChangeText={(value) => update("location", value)}
-      />
-      <Choice
-        label="Availability — changed manually"
-        value={draft.availability}
-        options={[
-          { value: "open", label: "Open" },
-          { value: "closed", label: "Closed" },
-        ]}
-        onChange={(value) => update("availability", value)}
-      />
-      <Field
-        label="Application link"
-        value={draft.url}
-        onChangeText={(value) => update("url", value)}
-      />
-      <Field
-        label="Listed date (YYYY-MM-DD, blank if unknown)"
-        value={draft.listedDate}
-        onChangeText={(value) => update("listedDate", value)}
-      />
-      <Field
-        label="Deadline (YYYY-MM-DD, optional)"
-        value={draft.deadline}
-        onChangeText={(value) => update("deadline", value)}
-      />
-      <Field
-        label="Date sent (YYYY-MM-DD, blank until applied)"
-        value={draft.appliedDate}
-        onChangeText={(value) => update("appliedDate", value)}
-      />
-      <Choice
-        label="Outcome"
-        value={draft.outcome}
-        options={["pending", "accepted", "rejected", "ghosted"].map(
-          (value) => ({
-            value,
-            label: value === "pending" ? "Awaiting response" : value,
-          }),
-        )}
-        onChange={(value) => update("outcome", value)}
-      />
-      {draft.outcome !== "pending" && (
-        <Field
-          label="Outcome date (YYYY-MM-DD)"
-          value={draft.outcomeDate}
-          onChangeText={(value) => update("outcomeDate", value)}
-        />
-      )}
-      <Field
-        label="Tags (comma separated)"
-        value={tags}
-        onChangeText={setTags}
-      />
-      <Field
-        label="Notes"
-        multiline
-        value={draft.notes}
-        onChangeText={(value) => update("notes", value)}
-      />
-      <Text style={s.muted}>Source: {item.sourceName}</Text>
-      {!!error && (
-        <Text accessibilityRole="alert" style={{ color: colors.red }}>
-          {error}
-        </Text>
-      )}
-      <View style={[s.row, { marginTop: 15 }]}>
-        <Button
-          primary
-          disabled={busy}
-          onPress={() => {
-            void save();
-          }}
-        >
-          Save internship
-        </Button>
-        {exists && (
-          <Button disabled={busy} onPress={() => setConfirmDelete(true)}>
-            Delete
-          </Button>
-        )}
-      </View>
-      {confirmDelete && (
-        <View style={{ gap: 10, marginTop: 12 }}>
-          <Text style={s.text}>
-            Delete this internship and its recorded history?
-          </Text>
-          <View style={s.row}>
-            <Button
-              disabled={busy}
-              onPress={() => {
-                void transact((workspace) => {
-                  workspace.internships.internships =
-                    workspace.internships.internships.filter(
-                      (row) => row.id !== item.id,
-                    );
-                }).then((saved) => {
-                  if (saved) onClose();
-                });
-              }}
-            >
-              Confirm deletion
-            </Button>
-            <Button onPress={() => setConfirmDelete(false)}>Keep it</Button>
-          </View>
-        </View>
-      )}
+    <Dialog title={internship ? "Edit internship" : "Add internship"} onClose={onClose} dirty={dirty} disabled={busy}>
+      <div style={{ gap: 8 }}>
+        <Field label="Company" value={draft.company} onChange={(value) => set("company", value)} />
+        <Field label="Role" value={draft.role} onChange={(value) => set("role", value)} />
+        <Field label="Location" value={draft.location} onChange={(value) => set("location", value)} />
+        <Field label="Application URL" value={draft.url} onChange={(value) => set("url", value)} />
+        <div style={styles.row}>
+          <div style={{ flexGrow: 1, minWidth: 200 }}><Field label="Listed date" value={draft.listedDate} onChange={(value) => set("listedDate", value)} /></div>
+          <div style={{ flexGrow: 1, minWidth: 200 }}><Field label="Deadline" value={draft.deadline} onChange={(value) => set("deadline", value)} /></div>
+          <div style={{ flexGrow: 1, minWidth: 200 }}><Field label="Applied date" value={draft.appliedDate} onChange={(value) => set("appliedDate", value)} /></div>
+          <div style={{ flexGrow: 1, minWidth: 200 }}><Field label="Outcome date" value={draft.outcomeDate} onChange={(value) => set("outcomeDate", value)} /></div>
+        </div>
+        <Choice label="Availability" value={draft.availability} onChange={(value) => set("availability", value as Internship["availability"])} options={[{ value: "open", label: "Open" }, { value: "closed", label: "Closed" }]} />
+        <Choice label="Outcome" value={draft.outcome} onChange={(value) => set("outcome", value as Outcome)} options={["pending", "ghosted", "rejected", "accepted"].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) }))} />
+        <Field label="Notes" value={draft.notes} onChange={(value) => set("notes", value)} multiline />
+        {error ? <text style={{ ...styles.text, color: colors.red }}>{error}</text> : null}
+        <div style={styles.row}>
+          <Button primary disabled={busy} onPress={() => void save()}>Save</Button>
+          <Button disabled={busy} onPress={onClose}>Cancel</Button>
+        </div>
+      </div>
     </Dialog>
   );
 }

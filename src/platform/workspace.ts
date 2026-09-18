@@ -6,117 +6,116 @@ import {
   validateAcademicData,
   type AcademicData,
 } from "../data/academic";
-import {
-  emptyDatabase,
-  parseDatabase,
-  type InternshipDatabase,
-} from "../internships/model";
+import { emptyDatabase, parseDatabase, type InternshipDatabase } from "../internships/model";
 import { DEFAULT_PREFS, type Preferences } from "../dashboard";
+import { BunSqlWorkspaceRepository, type WorkspaceRepository } from "./database";
 
 export interface Workspace {
-  format: "academic-dashboard-windows";
-  version: 1;
+  format: "academic-dashboard-workspace";
+  version: 2;
   academic: AcademicData;
   internships: InternshipDatabase;
   preferences: Preferences;
 }
-export interface WorkspaceFiles {
-  Read(): Promise<string>;
-  Write(contents: string): Promise<void>;
-  PickImport(): Promise<{ name: string; text: string } | null>;
-  Export(name: string, contents: string): Promise<boolean>;
-  StoragePath(): string;
-}
-let workspaceFiles: WorkspaceFiles | undefined;
 
-export function configureWorkspaceFiles(adapter: WorkspaceFiles) {
-  workspaceFiles = adapter;
-}
-
-function requireWorkspaceFiles(): WorkspaceFiles {
-  if (!workspaceFiles)
-    throw new Error("No workspace storage adapter has been configured.");
-  return workspaceFiles;
-}
-
-export const files: WorkspaceFiles = {
-  Read: () => requireWorkspaceFiles().Read(),
-  Write: (contents) => requireWorkspaceFiles().Write(contents),
-  PickImport: () => requireWorkspaceFiles().PickImport(),
-  Export: (name, contents) => requireWorkspaceFiles().Export(name, contents),
-  StoragePath: () => requireWorkspaceFiles().StoragePath(),
+type WorkspaceState = {
+  ready: boolean;
+  busy: boolean;
+  error: string;
+  notice: string;
+  data: Workspace;
 };
+
 const empty = (): Workspace => ({
-  format: "academic-dashboard-windows",
-  version: 1,
+  format: "academic-dashboard-workspace",
+  version: 2,
   academic: emptyAcademicData(),
   internships: emptyDatabase(),
   preferences: { ...DEFAULT_PREFS },
 });
-let state = { ready: false, busy: false, error: "", notice: "", data: empty() };
+
+let repository: WorkspaceRepository = new BunSqlWorkspaceRepository();
+let state: WorkspaceState = { ready: false, busy: false, error: "", notice: "", data: empty() };
 let rawAcademic = JSON.stringify(state.data.academic);
 const listeners = new Set<() => void>();
-const bindAcademic = () =>
+
+export function configureWorkspaceRepository(next: WorkspaceRepository) {
+  repository = next;
+  state = { ready: false, busy: false, error: "", notice: "", data: empty() };
+  rawAcademic = JSON.stringify(state.data.academic);
+  bindAcademic();
+}
+
+function bindAcademic() {
   configureAcademicStorage({
     read: () => rawAcademic,
-    write: (value) => {
-      rawAcademic = value;
-    },
+    write: (value) => { rawAcademic = value; },
   });
+}
 bindAcademic();
-function publish(next: Partial<typeof state>) {
+
+function publish(next: Partial<WorkspaceState>) {
   state = { ...state, ...next };
   listeners.forEach((listener) => listener());
 }
+
+export function getWorkspaceState() {
+  return state;
+}
+
 export function useWorkspace() {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
+      return () => { listeners.delete(listener); };
     },
     () => state,
   );
 }
+
 export function validateWorkspace(value: unknown): asserts value is Workspace {
   const data = value as Workspace;
-  if (data?.format !== "academic-dashboard-windows" || data.version !== 1)
-    throw new Error("Unsupported desktop backup format.");
+  if (data?.format !== "academic-dashboard-workspace" || data.version !== 2)
+    throw new Error("Unsupported workspace backup format.");
   validateAcademicData(data.academic);
   parseDatabase(JSON.stringify(data.internships));
-  if (
-    !data.preferences ||
-    Object.keys(DEFAULT_PREFS).some(
-      (key) => typeof data.preferences[key as keyof Preferences] !== "boolean",
-    )
-  )
-    throw new Error("Invalid dashboard preferences.");
+  if (!data.preferences || Object.keys(DEFAULT_PREFS).some(
+    (key) => typeof data.preferences[key as keyof Preferences] !== "boolean",
+  )) throw new Error("Invalid dashboard preferences.");
   data.preferences.showCalendar = false;
 }
+
+export function parseWorkspace(value: unknown): Workspace {
+  const candidate = value as Record<string, unknown>;
+  if (candidate?.format === "academic-dashboard-windows" && candidate.version === 1) {
+    const migrated = { ...candidate, format: "academic-dashboard-workspace", version: 2 } as Workspace;
+    validateWorkspace(migrated);
+    return migrated;
+  }
+  validateWorkspace(value);
+  return value;
+}
+
 export async function initialize() {
   if (state.busy) return;
   publish({ busy: true, error: "" });
   try {
-    const text = await files.Read();
-    const data: Workspace = text ? JSON.parse(text) : empty();
+    await repository.initialize();
+    const data = (await repository.load()) ?? empty();
     validateWorkspace(data);
     rawAcademic = JSON.stringify(data.academic);
     bindAcademic();
-    publish({ data, ready: true });
+    publish({ data, ready: true, notice: "Bun SQL workspace ready." });
   } catch (error) {
-    publish({
-      error: `Could not open local data. Existing files are untouched. ${String(error)}`,
-      ready: false,
-    });
+    publish({ error: `Could not open the Bun SQL workspace. ${String(error)}`, ready: false });
   } finally {
     publish({ busy: false });
   }
 }
-/** Stage a complete transaction in memory, persist atomically, then publish it. */
+
 export async function transact(
   change: (draft: Workspace) => void | Promise<void>,
-  notice = "Saved on this device.",
+  notice = "Saved to Bun SQL.",
 ): Promise<boolean> {
   if (!state.ready || state.busy) return false;
   const previous = state.data;
@@ -128,7 +127,7 @@ export async function transact(
     await change(draft);
     draft.academic = readAcademicData();
     validateWorkspace(draft);
-    await files.Write(JSON.stringify(draft));
+    await repository.save(draft);
     publish({ data: draft, notice });
     return true;
   } catch (error) {
@@ -140,17 +139,23 @@ export async function transact(
     publish({ busy: false });
   }
 }
+
 export function reportError(error: unknown) {
   publish({ error: String(error) });
 }
+
+export function storagePath() {
+  return repository.location;
+}
+
 export async function exportWorkspace() {
   try {
-    const contents = state.ready
-      ? JSON.stringify(state.data, null, 2)
-      : await files.Read();
-    if (await files.Export("AcademicDashboard-backup.json", contents))
-      publish({ notice: "Backup exported." });
+    const path = `${repository.location}.backup.json`;
+    await Bun.write(path, JSON.stringify(state.data, null, 2));
+    publish({ notice: `Backup exported to ${path}` });
+    return path;
   } catch (error) {
     reportError(error);
+    return null;
   }
 }

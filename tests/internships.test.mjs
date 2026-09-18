@@ -1,7 +1,6 @@
 import {expect, test} from 'bun:test';
 import {createInternship, emptyDatabase, mergeInternships, needsReview, parseDatabase, semesterSeries, validateInternship} from '../src/internships/model.ts';
 import {parseInternshipImport} from '../src/internships/importing.ts';
-import {internshipRepository, INTERNSHIP_STORAGE_KEY} from '../src/internships/storage.ts';
 
 const options = {sourceName: 'Simplify test fixture', snapshotDate: '2026-09-01', availability: 'open'};
 const opportunity = overrides => ({...createInternship('2026-08-24'), company: 'Example Robotics', role: 'Engineering Intern', ...overrides});
@@ -71,18 +70,4 @@ test('backups preserve histories and damaged backup does not silently reset to n
   const damaged = {...db, internships: [{...db.internships[0], outcomeDate: ''}]};
   expect(() => parseInternshipImport(JSON.stringify(damaged), options)).toThrow(/backup/);
   expect(() => parseDatabase(JSON.stringify({...db, version: 9}))).toThrow(/backup/);
-});
-
-test('storage saves/reloads and leaves existing data untouched on corrupt read or write failure', () => {
-  const values = new Map();
-  const storage = {getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value)};
-  const repository = internshipRepository(storage);
-  const db = {...emptyDatabase(), internships: [opportunity({})]};
-  repository.save(db);
-  expect(repository.load()).toEqual(db);
-  values.set(INTERNSHIP_STORAGE_KEY, '{broken');
-  expect(() => repository.load()).toThrow();
-  expect(values.get(INTERNSHIP_STORAGE_KEY)).toBe('{broken');
-  const failing = internshipRepository({...storage, setItem() {throw new Error('Quota exceeded');}});
-  expect(() => failing.save(db)).toThrow(/Quota/);
 });

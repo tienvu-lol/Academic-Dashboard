@@ -1,105 +1,59 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import {
-  initialize,
-  exportWorkspace,
-  useWorkspace,
-} from "../platform/workspace";
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { initialize, exportWorkspace, storagePath, useWorkspace } from "../platform/workspace";
 import { Academics } from "./Academics";
 import { Internships } from "./Internships";
 import { Imports } from "./Imports";
 import { Button } from "./ui";
-import { colors, styles as s } from "./theme";
+import { colors, mergeStyles, styles } from "./theme";
+
+type Page = "academics" | "internships" | "imports";
 
 function Dashboard() {
-  const [page, setPage] = useState("academics");
+  const [page, setPage] = useState<Page>("academics");
   const state = useWorkspace();
-  useEffect(() => {
-    void initialize();
-  }, []);
+  useEffect(() => { void initialize(); }, []);
   return (
-    <View style={s.app}>
-      <View style={s.sidebar}>
-        <Text style={[s.eyebrow, { color: colors.mint }]}>
-          PERSONAL WORKSPACE
-        </Text>
-        <Text style={[s.heading, { marginBottom: 32 }]}>
-          Academic Dashboard
-        </Text>
-        {[
-          { id: "academics", label: "01   Academics" },
-          { id: "internships", label: "02   Internships" },
-          { id: "imports", label: "03   Import & backup" },
-        ].map((tab) => (
-          <Pressable
-            key={tab.id}
-            accessibilityRole="tab"
-            onAccessibilityTap={() => setPage(tab.id)}
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: page === tab.id }}
-            onPress={() => setPage(tab.id)}
-            style={[
-              s.button,
-              { alignItems: "flex-start", marginBottom: 10 },
-              page === tab.id && s.active,
-            ]}
+    <div style={styles.app}>
+      <div style={styles.sidebar}>
+        <text style={{ ...styles.eyebrow, color: colors.mint }}>PERSONAL WORKSPACE</text>
+        <text style={{ ...styles.heading, marginBottom: 24 }}>Academic Dashboard</text>
+        {([
+          ["academics", "01   Academics"],
+          ["internships", "02   Internships"],
+          ["imports", "03   Import & backup"],
+        ] as const).map(([id, label]) => (
+          <div
+            key={id}
+            role="tab"
+            aria-selected={page === id}
+            aria-label={label}
+            tabIndex={0}
+            onClick={() => setPage(id)}
+            style={mergeStyles(styles.button, { alignItems: "flex-start" }, page === id && styles.active)}
           >
-            <Text style={[s.text, page === tab.id && { color: colors.mint }]}>
-              {tab.label}
-            </Text>
-          </Pressable>
+            <text style={{ ...styles.text, color: page === id ? colors.mint : colors.text }}>{label}</text>
+          </div>
         ))}
-        <View style={{ flex: 1 }} />
-        <Text style={s.muted}>Stored locally on Windows</Text>
-        <Text style={[s.muted, { marginTop: 8 }]}>
-          Calendar import disabled
-        </Text>
-      </View>
-      <View style={s.content}>
-        <View
-          style={[
-            s.spread,
-            {
-              paddingHorizontal: 28,
-              paddingVertical: 12,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.border,
-            },
-          ]}
-        >
-          <Text style={s.muted}>WORKSPACE / {page.toUpperCase()}</Text>
-          <Text
-            accessibilityLiveRegion="polite"
-            style={[s.muted, { color: colors.mint }]}
-          >
-            {state.busy ? "Saving…" : state.notice || "Local workspace"}
-          </Text>
-        </View>
-        {!!state.error && (
-          <View style={{ padding: 16, backgroundColor: "#492b29" }}>
-            <Text selectable accessibilityLiveRegion="assertive" style={s.text}>
-              {state.error}
-            </Text>
-          </View>
-        )}
+        <div style={{ flexGrow: 1 }} />
+        <text style={styles.muted}>GPUix native renderer</text>
+        <text style={styles.muted}>Bun SQL · SQLite</text>
+        <text style={{ ...styles.muted, fontSize: 10 }}>{storagePath()}</text>
+      </div>
+      <div style={styles.content}>
+        <div style={{ ...styles.spread, paddingLeft: 28, paddingRight: 28, paddingTop: 12, paddingBottom: 12, borderBottomWidth: 1, borderColor: colors.border }}>
+          <text style={styles.muted}>WORKSPACE / {page.toUpperCase()}</text>
+          <text style={{ ...styles.muted, color: colors.mint }}>{state.busy ? "Saving…" : state.notice || "Local SQL workspace"}</text>
+        </div>
+        {state.error ? (
+          <div style={{ padding: 14, backgroundColor: "#492b29" }}>
+            <text style={styles.text}>{state.error}</text>
+          </div>
+        ) : null}
         {!state.ready ? (
-          <View style={s.page}>
-            {state.busy ? (
-              <ActivityIndicator color={colors.mint} />
-            ) : (
-              <>
-                <Text style={s.heading}>
-                  Your workspace could not be opened
-                </Text>
-                <View style={s.row}>
-                  <Button onPress={() => void initialize()}>Try again</Button>
-                  <Button onPress={() => void exportWorkspace()}>
-                    Export existing file for recovery
-                  </Button>
-                </View>
-              </>
-            )}
-          </View>
+          <div style={styles.page}>
+            <text style={styles.heading}>{state.busy ? "Opening Bun SQL workspace…" : "Your workspace could not be opened"}</text>
+            {!state.busy ? <Button onPress={() => void initialize()}>Try again</Button> : null}
+          </div>
         ) : page === "academics" ? (
           <Academics />
         ) : page === "internships" ? (
@@ -107,29 +61,26 @@ function Dashboard() {
         ) : (
           <Imports />
         )}
-      </View>
-    </View>
+      </div>
+    </div>
   );
 }
-export default class App extends React.Component<{}, { error: string }> {
+
+export default class App extends Component<object, { error: string }> {
   state = { error: "" };
-  static getDerivedStateFromError(error: Error) {
-    return { error: error.message };
-  }
-  render() {
-    return this.state.error ? (
-      <View style={[s.app, s.page, { flexDirection: "column" }]}>
-        <Text style={s.title}>The dashboard encountered an error</Text>
-        <Text selectable style={s.text}>
-          {this.state.error}
-        </Text>
-        <Button onPress={() => this.setState({ error: "" })}>
-          Reload interface
-        </Button>
-        <Button onPress={() => void exportWorkspace()}>Export backup</Button>
-      </View>
-    ) : (
-      <Dashboard />
+  static getDerivedStateFromError(error: Error) { return { error: error.message }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error(error, info.componentStack); }
+  render(): ReactNode {
+    if (!this.state.error) return <Dashboard />;
+    return (
+      <div style={{ ...styles.app, ...styles.page, flexDirection: "column" }}>
+        <text style={styles.title}>The dashboard encountered an error</text>
+        <text style={styles.text}>{this.state.error}</text>
+        <div style={styles.row}>
+          <Button onPress={() => this.setState({ error: "" })}>Reload interface</Button>
+          <Button onPress={() => void exportWorkspace()}>Export backup</Button>
+        </div>
+      </div>
     );
   }
 }
