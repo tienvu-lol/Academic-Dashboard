@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { NativeModules } from "react-native";
 import {
   configureAcademicStorage,
   emptyAcademicData,
@@ -21,14 +20,32 @@ export interface Workspace {
   internships: InternshipDatabase;
   preferences: Preferences;
 }
-interface NativeFiles {
+export interface WorkspaceFiles {
   Read(): Promise<string>;
   Write(contents: string): Promise<void>;
   PickImport(): Promise<{ name: string; text: string } | null>;
   Export(name: string, contents: string): Promise<boolean>;
   StoragePath(): string;
 }
-export const files = NativeModules.WorkspaceFiles as NativeFiles;
+let workspaceFiles: WorkspaceFiles | undefined;
+
+export function configureWorkspaceFiles(adapter: WorkspaceFiles) {
+  workspaceFiles = adapter;
+}
+
+function requireWorkspaceFiles(): WorkspaceFiles {
+  if (!workspaceFiles)
+    throw new Error("No workspace storage adapter has been configured.");
+  return workspaceFiles;
+}
+
+export const files: WorkspaceFiles = {
+  Read: () => requireWorkspaceFiles().Read(),
+  Write: (contents) => requireWorkspaceFiles().Write(contents),
+  PickImport: () => requireWorkspaceFiles().PickImport(),
+  Export: (name, contents) => requireWorkspaceFiles().Export(name, contents),
+  StoragePath: () => requireWorkspaceFiles().StoragePath(),
+};
 const empty = (): Workspace => ({
   format: "academic-dashboard-windows",
   version: 1,
@@ -81,10 +98,6 @@ export async function initialize() {
   if (state.busy) return;
   publish({ busy: true, error: "" });
   try {
-    if (!files)
-      throw new Error(
-        "The native storage module is unavailable. Rebuild the Windows application.",
-      );
     const text = await files.Read();
     const data: Workspace = text ? JSON.parse(text) : empty();
     validateWorkspace(data);

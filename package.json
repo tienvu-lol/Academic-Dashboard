@@ -1,46 +1,13 @@
 {
-  "name": "academic-dashboard-windows",
-  "version": "1.0.0",
+  "name": "academic-dashboard",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Setup-Dev.ps1",
-    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-Dev.ps1",
-    "test": "node --import ./tests/register-ts.mjs --import ./tests/register-native.mjs --test tests/academic.test.mjs tests/internships.test.mjs tests/workspace.test.mjs",
-    "start": "npm run dev",
-    "metro": "react-native start",
-    "windows": "npm run dev",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test",
-    "bundle": "react-native bundle --platform windows --dev false --entry-file index.js --bundle-output windows/AcademicDashboard/Bundle/index.windows.bundle --assets-dest windows/AcademicDashboard/Bundle",
-    "build": "npm run release",
-    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1",
-    "test:windows": "jest --config jest.config.windows.js"
-  },
-  "dependencies": {
-    "react": "19.2.3",
-    "react-native": "0.84.1",
-    "react-native-windows": "0.84.0",
-    "react-native-url-polyfill": "2.0.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "20.1.0",
-    "@react-native/babel-preset": "0.84.1",
-    "@react-native/metro-config": "0.84.1",
-    "@react-native/typescript-config": "0.84.1",
-    "@types/react": "^19.2.0",
-    "typescript": "^5.8.3",
-    "@rnx-kit/jest-preset": "^0.3.1"
+    "test": "bun test tests/academic.test.mjs tests/internships.test.mjs",
+    "check": "bun run test"
   },
   "engines": {
-    "node": ">=22.11.0"
-  },
-  "react-native-windows": {
-    "init-windows": {
-      "name": "AcademicDashboard",
-      "namespace": "AcademicDashboard",
-      "template": "cpp-app"
-    }
+    "bun": ">=1.0.0"
   }
 }

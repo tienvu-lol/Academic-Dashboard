@@ -1,5 +1,4 @@
-import {beforeEach, test} from 'node:test';
-import assert from 'node:assert/strict';
+import {beforeEach, expect, test} from 'bun:test';
 import {configureAcademicStorage, readAcademicData, optionId} from '../src/data/academic.ts';
 import {commitAcademicImport, parseAcademicImport, previewAcademicImport} from '../src/data/academicImport.ts';
 import {createEntity, getDocument, getEntityById, getSingleSelectOptions, queryEntities, setDocument, updateEntity} from '../src/lib/fibery.ts';
@@ -11,18 +10,18 @@ const read = type => queryEntities({type, fields: []});
 
 test('Fibery CSV preview is read-only, commit connects courses and creates custom select options', async () => {
   const courses = parseAcademicImport('Name,Credits,Term\nECE 1004,3,Fall 2026', 'courses.csv', 'University/Courses');
-  assert.equal(previewAcademicImport(courses).added, 1);
-  assert.equal(raw, null);
+  expect(previewAcademicImport(courses).added).toBe(1);
+  expect(raw).toBeNull();
   commitAcademicImport(courses);
   const tasks = parseAcademicImport('Name,Due Date,Course,Priority,Status\nLab 1,2026-09-15,ECE 1004,Critical,In Progress', 'tasks.csv', 'University/Assignments');
   commitAcademicImport(tasks);
   const [assignment] = await read('University/Assignments');
   const [course] = await read('University/Courses');
-  assert.equal(assignment['University/Course']['fibery/id'], course['fibery/id']);
-  assert.equal(assignment['University/Priority']['enum/name'], 'Critical');
-  assert.equal(assignment['workflow/state']['enum/name'], 'In Progress');
-  assert.equal(commitAcademicImport(tasks).added, 0);
-  assert.equal((await read('University/Assignments')).length, 1);
+  expect(assignment['University/Course']['fibery/id']).toBe(course['fibery/id']);
+  expect(assignment['University/Priority']['enum/name']).toBe('Critical');
+  expect(assignment['workflow/state']['enum/name']).toBe('In Progress');
+  expect(commitAcademicImport(tasks).added).toBe(0);
+  expect((await read('University/Assignments')).length).toBe(1);
 });
 
 test('Fibery JSON namespace fields and Markdown descriptions survive backup', async () => {
@@ -30,18 +29,18 @@ test('Fibery JSON namespace fields and Markdown descriptions survive backup', as
   commitAcademicImport(source);
   const [course] = await read('University/Courses');
   const doc = await getDocument({secret: course['University/Description']['Collaboration~Documents/secret']});
-  assert.equal(doc.localMarkdown, '# Course notes\n**Important**');
-  assert.deepEqual(course['custom/Extra'], {value: 42});
+  expect(doc.localMarkdown).toBe('# Course notes\n**Important**');
+  expect(course['custom/Extra']).toEqual({value: 42});
   const backup = JSON.stringify(readAcademicData());
   configureAcademicStorage({read: () => null, write: value => {raw = value;}});
-  assert.equal(previewAcademicImport(parseAcademicImport(backup, 'backup.json', 'University/Courses')).added, 1);
+  expect(previewAcademicImport(parseAcademicImport(backup, 'backup.json', 'University/Courses')).added).toBe(1);
 });
 
 test('invalid import is atomic and malformed CSV or dates produce actionable errors', () => {
   const source = parseAcademicImport('Name,Due Date\nGood,2026-09-15\nBad,2026-02-30', 'assignments.csv', 'University/Assignments');
-  assert.throws(() => commitAcademicImport(source), /Nothing was imported/);
-  assert.equal(raw, null);
-  assert.throws(() => parseAcademicImport('Name,Credits\nTest,3,extra', 'courses.csv', 'University/Courses'), /columns/);
+  expect(() => commitAcademicImport(source)).toThrow(/Nothing was imported/);
+  expect(raw).toBeNull();
+  expect(() => parseAcademicImport('Name,Credits\nTest,3,extra', 'courses.csv', 'University/Courses')).toThrow(/columns/);
 });
 
 test('restoring a backup remaps assignments when an equivalent course already has a different local ID', async () => {
@@ -52,18 +51,18 @@ test('restoring a backup remaps assignments when an equivalent course already ha
   configureAcademicStorage({read: () => raw, write: value => {raw = value;}});
   const localCourse = await createEntity({type: 'University/Courses', values: {'University/Name': 'Robotics'}});
   const result = commitAcademicImport(parseAcademicImport(backup, 'backup.json', 'University/Courses'));
-  assert.equal(result.added, 1);
-  assert.equal(result.skipped, 1);
+  expect(result.added).toBe(1);
+  expect(result.skipped).toBe(1);
   const [assignment] = await read('University/Assignments');
-  assert.equal(assignment['University/Course']['fibery/id'], localCourse['fibery/id']);
+  expect(assignment['University/Course']['fibery/id']).toBe(localCourse['fibery/id']);
 });
 
 test('manual academic changes are preserved when a matching ID is imported again', async () => {
   const source = parseAcademicImport('[{"id":"task-1","Name":"Task","Status":"Not Started"}]', 'tasks.json', 'University/To-Dos');
   commitAcademicImport(source);
   await updateEntity({type: 'University/To-Dos', id: 'task-1', values: {'University/Name': 'My edited task', 'workflow/state': {'fibery/id': optionId('workflow/state', 'In Progress')}}});
-  assert.equal(commitAcademicImport(source).skipped, 1);
-  assert.equal((await read('University/To-Dos'))[0]['University/Name'], 'My edited task');
+  expect(commitAcademicImport(source).skipped).toBe(1);
+  expect((await read('University/To-Dos'))[0]['University/Name']).toBe('My edited task');
 });
 
 test('completing work archives its course, priority, original date and full document before deleting source', async () => {
@@ -73,33 +72,33 @@ test('completing work archives its course, priority, original date and full docu
   const document = {comments: [{text: 'Retain original comment'}], doc: {type: 'doc', content: [{type: 'paragraph', content: [{type: 'text', text: 'Original'}]}]}, localMarkdown: 'Updated local notes'};
   await setDocument({secret: assignment['University/Description']['Collaboration~Documents/secret'], content: document});
   const archived = await completeWorkItem({id: assignment['fibery/id'], publicId: assignment['fibery/public-id'], name: 'Lab', type: 'Assignment', dueDate: '2026-09-15', contextId: course['fibery/id'], tagId: priority.id, tag: priority.name}, {types: [], priorities: [], categories: []});
-  assert.equal((await read('University/Assignments')).length, 0);
-  assert.equal((await read('University/Completed Work')).length, 1);
-  assert.equal(archived['University/Original Due Date'], '2026-09-15');
-  assert.equal(archived['University/Course']['University/Name'], 'ECE 1004');
-  assert.deepEqual(await getDocument({secret: archived['University/Description']['Collaboration~Documents/secret']}), document);
+  expect((await read('University/Assignments')).length).toBe(0);
+  expect((await read('University/Completed Work')).length).toBe(1);
+  expect(archived['University/Original Due Date']).toBe('2026-09-15');
+  expect(archived['University/Course']['University/Name']).toBe('ECE 1004');
+  expect(await getDocument({secret: archived['University/Description']['Collaboration~Documents/secret']})).toEqual(document);
 });
 
 test('corrupt saved data and failed writes do not clear the previous storage value', async () => {
   raw = '{broken';
-  assert.throws(() => readAcademicData(), /left untouched/);
-  await assert.rejects(() => createEntity({type: 'University/Courses', values: {'University/Name': 'Test'}}), /left untouched/);
-  assert.equal(raw, '{broken');
+  expect(() => readAcademicData()).toThrow(/left untouched/);
+  await expect(createEntity({type: 'University/Courses', values: {'University/Name': 'Test'}})).rejects.toThrow(/left untouched/);
+  expect(raw).toBe('{broken');
   raw = null;
   configureAcademicStorage({read: () => raw, write: () => {throw new Error('Quota');}});
-  await assert.rejects(() => createEntity({type: 'University/Courses', values: {'University/Name': 'Test'}}), /could not be saved/);
-  assert.equal(raw, null);
+  await expect(createEntity({type: 'University/Courses', values: {'University/Name': 'Test'}})).rejects.toThrow(/could not be saved/);
+  expect(raw).toBeNull();
 });
 
 test('failed document copy rolls back archive creation while preserving the original task', async () => {
   const task = await createEntity({type: 'University/To-Dos', values: {'University/Name': 'Keep me'}});
   let writes = 0;
   configureAcademicStorage({read: () => raw, write: value => {if (++writes === 2) throw new Error('Simulated copy failure'); raw = value;}});
-  await assert.rejects(() => completeWorkItem({id: task['fibery/id'], name: 'Keep me', type: 'To-Do', dueDate: null, contextId: '', tagId: ''}, {types: [], priorities: [], categories: []}), /could not be saved/);
-  assert.equal((await read('University/To-Dos')).length, 1);
-  assert.equal((await read('University/Completed Work')).length, 0);
+  await expect(completeWorkItem({id: task['fibery/id'], name: 'Keep me', type: 'To-Do', dueDate: null, contextId: '', tagId: ''}, {types: [], priorities: [], categories: []})).rejects.toThrow(/could not be saved/);
+  expect((await read('University/To-Dos')).length).toBe(1);
+  expect((await read('University/Completed Work')).length).toBe(0);
 });
 
 test('disabled Google Calendar query returns no events', async () => {
-  assert.deepEqual(await read('Google Calendar/Event'), []);
+  expect(await read('Google Calendar/Event')).toEqual([]);
 });
