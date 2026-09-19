@@ -115,7 +115,11 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
     for (const row of entityRows) collections[row.collection].push(JSON.parse(row.payload));
     const documents: Record<string, DocumentContentJson> = {};
     for (const row of documentRows) documents[row.key] = JSON.parse(row.value);
-    const options: Record<string, LocalOption[]> = {};
+    // Empty option lists have no table rows; retain their keys across restarts.
+    const optionFields: string[] = JSON.parse(meta.get('academic.optionFields') ?? '[]');
+    const options: Record<string, LocalOption[]> = Object.fromEntries(
+      [...new Set([...optionFields, 'University/Category', 'University/Priority', 'workflow/state'])].map(field => [field, []]),
+    );
     for (const row of optionRows) (options[row.key] ??= []).push(JSON.parse(row.value));
 
     const academic: AcademicData = {
@@ -139,6 +143,7 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
       academic,
       internships,
       preferences: JSON.parse(required(meta, "preferences")) as Preferences,
+      ...(meta.has('dashboard.settings') ? { dashboardSettings: JSON.parse(required(meta, 'dashboard.settings')) } : {}),
     };
   }
 
@@ -154,8 +159,10 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
         ["format", workspace.format],
         ["version", String(workspace.version)],
         ["academic.updatedAt", workspace.academic.updatedAt],
+        ["academic.optionFields", JSON.stringify(Object.keys(workspace.academic.options))],
         ["preferences", JSON.stringify(workspace.preferences)],
         ["internships.settings", JSON.stringify(workspace.internships.settings)],
+        ["dashboard.settings", JSON.stringify(workspace.dashboardSettings ?? { keywords: ['Test', 'Exam'], order: ['keywords', 'priority', 'due', 'course'], courseOrder: [], internshipCategories: [], sidebarSlim: false })],
       ] as const;
       for (const [key, value] of metadata)
         await tx`INSERT INTO workspace_meta (key, value) VALUES (${key}, ${value})`;

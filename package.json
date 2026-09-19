@@ -3,24 +3,49 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist-electron/main.mjs",
   "packageManager": "bun@1.4.2",
   "scripts": {
-    "dev": "bun --hot src/main.tsx",
+    "dev": "bun scripts/dev.ts",
     "test": "bun test",
+    "verify:ui": "bun scripts/verify-ui.ts",
     "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun run test"
+    "lint": "oxlint .",
+    "build:renderer": "vite build",
+    "build:electron": "bun scripts/build-electron.ts",
+    "build": "bun run typecheck && bun run build:renderer && bun run build:electron",
+    "start": "bun run build && bun scripts/start.ts",
+    "check": "bun run typecheck && bun run lint && bun run test"
   },
   "engines": {
     "bun": ">=1.4.2"
   },
   "dependencies": {
-    "@gpuix/native": "0.9.0",
-    "@gpuix/react": "0.9.0",
-    "react": "19.3.0"
+    "class-variance-authority": "^0.7.1",
+    "clsx": "latest",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.47.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.3.0",
+    "react-day-picker": "^10.0.1",
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "3.8.0",
+    "tailwind-merge": "latest"
   },
   "devDependencies": {
+    "@shadcn/lint": "latest",
+    "@tailwindcss/vite": "latest",
     "@types/bun": "1.4.2",
+    "@types/node": "latest",
     "@types/react": "19.3.0",
-    "typescript": "7.0.2"
-  }
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "electron": "latest",
+    "oxlint": "latest",
+    "tailwindcss": "latest",
+    "typescript": "7.0.2",
+    "vite": "latest"
+  },
+  "trustedDependencies": ["electron"]
 }

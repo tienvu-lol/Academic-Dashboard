@@ -15,9 +15,11 @@ data/
 
 # Generated output
 dist/
+dist-electron/
 build/
 coverage/
 artifacts/
+.vite/
 releases/
 *.log
 

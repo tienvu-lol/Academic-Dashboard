@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from "react";
 import {
   configureAcademicStorage,
   emptyAcademicData,
@@ -16,6 +15,7 @@ export interface Workspace {
   academic: AcademicData;
   internships: InternshipDatabase;
   preferences: Preferences;
+  dashboardSettings?: import('../data/planning').DashboardSettings;
 }
 
 type WorkspaceState = {
@@ -61,16 +61,6 @@ function publish(next: Partial<WorkspaceState>) {
 
 export function getWorkspaceState() {
   return state;
-}
-
-export function useWorkspace() {
-  return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    },
-    () => state,
-  );
 }
 
 export function validateWorkspace(value: unknown): asserts value is Workspace {

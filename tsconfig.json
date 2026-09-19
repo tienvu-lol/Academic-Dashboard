@@ -1,16 +1,32 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    "jsxImportSource": "@gpuix/react",
-    "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "noEmit": true,
-    "skipLibCheck": true,
-    "verbatimModuleSyntax": true,
-    "types": ["bun"],
-    "lib": ["ES2022", "DOM"]
+    "jsx": "react-jsx",
+    "types": ["bun", "vite/client"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "electron/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vite.config.ts"
+  ]
 }

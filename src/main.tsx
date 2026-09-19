@@ -1,11 +1,18 @@
-import { render } from "@gpuix/react";
-import App from "./dashboard-components/App";
-import "./platform/runtime";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
-render(<App />, {
-  title: "Academic Dashboard",
-  width: 1280,
-  height: 820,
-  minWidth: 900,
-  minHeight: 620,
-});
+import "./styles/globals.css";
+import { App } from "./features/app";
+import { TooltipProvider } from "./components/ui/tooltip";
+
+const root = document.getElementById("root");
+
+if (!root) {
+  throw new Error("Missing #root application mount point.");
+}
+
+createRoot(root).render(
+  <StrictMode>
+    <TooltipProvider><App /></TooltipProvider>
+  </StrictMode>,
+);
