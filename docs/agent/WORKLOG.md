@@ -5,6 +5,38 @@ Chronological log of agent sessions. Most recent first.
 
 ---
 
+## 2026-09-21 — Responsive layout editor, renderer optimization, and native motion
+
+**Agent:** Codex
+**Branch:** Native-Overhaul
+
+### Work Completed
+- Wrote a durable interruption/resume plan before implementation and maintained the required live handoff.
+- Rebuilt edit mode around a backward-compatible 12-column coordinate model with deterministic collision reflow.
+- Replaced HTML drag/drop with pointer-captured, animation-frame-batched two-axis movement and resize, keyboard parity, announcements, Pin, persistence, and Reset.
+- Added responsive edit chrome and stacking safeguards; reviewed Dashboard, edit mode, narrow layout, and week calendar screenshots with no clipping or page overflow.
+- Added a dependency-free production Electron benchmark and optimized stable callbacks/component boundaries.
+- Removed 365 redundant Radix tooltip trees from the activity heatmap while keeping native labels and accessible names.
+- Rejected a mounted-page cache after it caused hidden-chart and duplicate-control artifacts.
+- Added restrained page, press, and one-time scroll-presence motion with `prefers-reduced-motion`; GridStack and Motion remained references and no package was installed.
+- Updated the Electron smoke flow for coordinate movement, two-axis resize, persistence, reset, and a date-dependent recurring-event setup.
+
+### Performance Results
+- Pre-animation medians (5 samples): renderer-ready 198.60 ms; process-ready 318.80 ms; warm Dashboard/Notes 24.40/49.20 ms; warm Dashboard/Internships 40.40/48.80 ms.
+- Post-animation medians (5 samples): renderer-ready 194.30 ms (-2.17%); process-ready 336.59 ms (+5.58%); warm Dashboard/Notes 24.20/49.00 ms; warm Dashboard/Internships 39.90/49.20 ms.
+- A 9-sample confirmation measured renderer-ready 201.80 ms (+1.61%), process-ready 322.50 ms (+1.16%), all first routes between -7.18% and +1.26%, and all warm routes between -19.31% and -0.20%. This resolved the smaller run's first-load/JIT variance and kept every median within budget or faster.
+
+### Verification
+- `bun run lint`: pass, 0 errors and the same 2 pre-existing warnings
+- `bun run typecheck`: pass
+- `bun run test`: pass, 45/45 tests and 362 assertions
+- `bun run verify:ui`: pass in the real Electron window
+
+### Outstanding
+- No work remains for this request. Later roadmap items remain unchanged and out of scope.
+
+---
+
 ## 2026-09-20 — UI visual scheme refinement
 
 **Agent:** Antigravity (Gemini)
@@ -14,7 +46,10 @@ Chronological log of agent sessions. Most recent first.
 - Added typography adjustments based on reference images, updating headings to be lighter (`font-weight: 300` and `450`), and tracking tighter (`letter-spacing: -0.065em`, `-0.055em`).
 - Increased panel and card radii from 14px/12px to 24px/18px to create smoother, more "landscape" shapes in line with the requested artistic flair.
 - Enhanced the box-shadows on cards and active widgets with a more pronounced, albeit still subtle, blue and red accent glow.
-- Kept all existing layout and behavior unchanged, relying entirely on CSS variable and token overrides in `src/styles/globals.css`.
+- Updated sidebar navigation items to match the smoother radii and blue glow, and refined the brand mark logo with a transparent background and white drop-shadow glow.
+- Adjusted Calendar cell styling to use a perfect square (`aspect-ratio: 1 / 1`) by migrating `.full-calendar` base classes from `display: table` and `display: table-cell` to a robust Flexbox layout, successfully allowing CSS aspect ratio rules to apply to the table cells.
+- Added a new `.stat-yellow` variant and assigned it to the "Active tasks" dashboard widget so it maintains a glowing, passive amber/yellow accent.
+- Verified that the "Overdue" stat widget gracefully drops its red glowing state (falling back to a non-glowing `.stat-neutral`) when there are zero overdue assignments, precisely matching the requested conditional rendering.
 - Marked all UI/UX documentation steps and CSS implementation steps as completed in `CURRENT_WORK.md`.
 
 ### Test Results

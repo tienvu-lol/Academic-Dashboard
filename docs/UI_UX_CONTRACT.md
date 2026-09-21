@@ -196,11 +196,11 @@ This refinement is implemented through shared CSS tokens and overrides. It must 
 ## Containers, Borders, and Corners
 
 - Do not wrap every conceptual group in a card.
-- Main work surfaces may use one quiet border and an `8px` radius.
+- Main work surfaces may use one quiet border and an `18-24px` radius; dense controls and nested rows stay nearer `8-12px` so hierarchy remains visible.
 - Task rows use dividers, not nested cards.
 - Summary items should read as one strip or a coordinated sequence, not independent promotional tiles.
 - Use square or small-radius table/header geometry where it reinforces alignment.
-- Shadows and gradients are not decorative defaults. Use neither on the Dashboard unless a temporary overlay needs depth.
+- Shadows and gradients are not decorative defaults. Restrained blue/red edge glow may accent a primary surface or active edit state, but must not obscure content or compete with status color.
 
 ---
 
@@ -215,15 +215,21 @@ This refinement is implemented through shared CSS tokens and overrides. It must 
 
 ### Drag and drop
 
-- Widget reorder/dock uses the edit-mode grip and visible drop zones.
+- Widget placement uses the edit-mode grip, a visible coordinate-grid preview, and pointer capture.
 - Task reorder uses the row grip; Alt+Up/Down remains the keyboard alternative.
 - Drag feedback must identify the target and must not depend only on color.
 
 ### Motion
 
-- Page changes are instant.
-- Motion may clarify opening, collapsing, saving, dragging, or revealing the sidebar.
-- Respect `prefers-reduced-motion` and never require animation to understand state.
+- Page changes remain immediately interactive; a transform/opacity reveal may run for at most 180ms without delaying navigation.
+- Motion may clarify opening, collapsing, saving, dragging, revealing the sidebar, or a widget entering the scroll viewport.
+- Use the shared fast curve `cubic-bezier(0.4, 0, 0.2, 1)` for press feedback and the smooth curve `cubic-bezier(0.16, 1, 0.3, 1)` for page/widget presence.
+- Spatial motion uses transform and opacity only. Very short control-state color/border fades are allowed when they remain within the measured budget; never animate layout dimensions, position offsets, or scrolling geometry.
+- Press feedback targets about 80ms; page/widget presence targets 160-200ms. Avoid bounce on large surfaces.
+- Animations must be interruptible, must never block input, and must use `will-change` only during an active drag where profiling justifies it.
+- Respect `prefers-reduced-motion` by removing spatial movement and reducing durations to effectively instant.
+
+These rules were adapted on 2026-09-21 from the user-supplied Web Animation Best Practices gist and Motion's hybrid/native-browser performance model. Motion is a reference only; no animation dependency is installed.
 
 ### Forms and dialogs
 
@@ -269,11 +275,12 @@ This refinement is implemented through shared CSS tokens and overrides. It must 
 
 When edit mode is active:
 
-- Preserve the existing widget drag, dock, keyboard move, width resize, empty-slot, append-zone, reset, and explicit Pin behavior.
-- Editing chrome should be visually subordinate to the content while remaining discoverable.
-- Width resizing must never assign a height.
-- Pin is the only action that creates an internal widget scrollbar.
-- Drop zones identify their purpose with shape/text as well as color.
+- Render persisted desktop coordinates on a visible 12-column guide; narrow windows may stack modules without mutating those coordinates.
+- The grip supports pointer movement in both axes. `Alt+Arrow` provides four-direction keyboard movement and announces the result.
+- The southeast handle resizes width by snapped columns and height only after deliberate vertical movement. Arrow keys resize width; `Shift+Up` restores natural height.
+- Horizontal-only resize must never assign a height. Pin and deliberate vertical resize are the only paths to an internal widget scrollbar.
+- Collision feedback must be visible without relying only on color, and the saved layout must contain no overlap.
+- Editing chrome should remain visually subordinate, wrap before covering content, and preserve Reset plus explicit Pin controls.
 
 ---
 

@@ -5,6 +5,18 @@ Decisions are recorded here when they change module structure, add/remove depend
 
 ---
 
+## 2026-09-21 — Native coordinate grid and measured motion
+
+**Context:** The requested edit experience referenced GridStack and Motion, but adding dependencies requires explicit approval. The existing ordered-span HTML drag/drop editor could not provide reliable two-axis placement, frame-batched previews, or deliberate vertical resizing. Page switching also mounted hundreds of tooltip primitives in the activity heatmap.
+
+**Decision:** Keep the implementation dependency-free. Add optional paired `column`/`row` fields to the backward-compatible layout model, a pure collision-safe placement engine, and Pointer Events with one preview update per animation frame and one persistence write on release. A deliberate vertical resize may now set the same height cap as Pin; horizontal-only movement never sets height. Add native CSS/IntersectionObserver motion with reduced-motion handling, and replace per-cell heatmap tooltip trees with native accessible labels. This supersedes the 2026-09-20 width-only interaction decision while retaining its protection against accidental height assignment.
+
+**Alternatives considered:** Install GridStack and Motion (not authorized and unnecessary for the bounded behavior); retain HTML drag/drop and dock zones (insufficient for responsive coordinate movement); keep multiple pages mounted to accelerate switching (rejected after Electron exposed hidden zero-size chart warnings and duplicate controls).
+
+**Consequences:** Legacy layouts normalize without migration, new layouts may persist explicit coordinates, collision logic remains testable outside React, and narrow rendering stacks without changing saved desktop geometry. Motion has no runtime package cost. The production Electron benchmark is now the regression gate for future animation and page-switch changes.
+
+---
+
 ## 2026-09-20 — Width-only resize handle; height as explicit opt-in
 
 **Context:** The resize handle in `widget-layout.tsx` tracked both X and Y mouse movement. Any tiny vertical drift during a horizontal drag would call `resizeWidget(..., newHeight)`, permanently setting a `height` value on the widget. This caused: (1) accidental fixed-height mode with scrollbars on any widget the user tried to resize, and (2) visual glitchiness from continuous re-renders on pointer move.

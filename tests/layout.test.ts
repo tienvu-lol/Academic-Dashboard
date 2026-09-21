@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { appendWidget, dockWidget, emptySlots, layoutFor, placeInSlot, resizeWidget, validLayouts, widgetPositions } from '../src/data/layout';
+import { appendWidget, dockWidget, emptySlots, layoutFor, moveWidget, placeInSlot, positionedLayout, resizeGridWidget, resizeWidget, validLayouts, widgetPositions } from '../src/data/layout';
 import { calendarLoads, emptyWorkspace, settingsFor, tasksFor, validateDashboardWorkspace } from '../src/data/planning';
 import { BunSqlWorkspaceRepository } from '../src/platform/database';
 
@@ -116,6 +116,44 @@ test('appendWidget fills trailing row space or starts a fresh full-width row', (
   expect(widgetPositions(appended)[appended.length - 1].row).toBe(2);
   // Source is removed from its original position.
   expect(appended.filter(x => x.id === 'tasks')).toHaveLength(1);
+});
+
+test('positioned layouts preserve legacy packing and resolve saved collisions', () => {
+  const legacy = layoutFor('dashboard');
+  expect(positionedLayout(legacy).slice(0, 4).map(({ column, row }) => ({ column, row }))).toEqual([
+    { column: 1, row: 1 }, { column: 5, row: 1 }, { column: 9, row: 1 }, { column: 1, row: 2 },
+  ]);
+  const collided = positionedLayout([
+    { id: 'upcoming', span: 6, column: 1, row: 1 },
+    { id: 'total', span: 6, column: 4, row: 1 },
+  ]);
+  expect(collided[0]).toMatchObject({ column: 1, row: 1 });
+  expect(collided[1]).toMatchObject({ column: 7, row: 1 });
+});
+
+test('grid moves own the target cell and push collisions without overlap', () => {
+  const moved = moveWidget(layoutFor('dashboard'), 'calendar', 5, 1);
+  const calendar = moved.find(item => item.id === 'calendar')!;
+  expect(calendar).toMatchObject({ column: 1, row: 1, span: 12 });
+  const positioned = positionedLayout(moved);
+  for (let index = 0; index < positioned.length; index++) {
+    const item = positioned[index];
+    expect(item.column).toBeGreaterThanOrEqual(1);
+    expect(item.column + item.span).toBeLessThanOrEqual(13);
+    for (const other of positioned.slice(index + 1)) {
+      expect(item.row === other.row && item.column < other.column + other.span && other.column < item.column + item.span).toBe(false);
+    }
+  }
+});
+
+test('grid resizing preserves coordinates, bounds dimensions, and reflows collisions', () => {
+  const base = positionedLayout(layoutFor('dashboard'));
+  const resized = resizeGridWidget(base, 'upcoming', 8, 360);
+  expect(resized.find(item => item.id === 'upcoming')).toMatchObject({ span: 8, height: 360, column: 1, row: 1 });
+  expect(resized.find(item => item.id === 'total')).toMatchObject({ column: 9, row: 1 });
+  const natural = resizeGridWidget(resized, 'upcoming', 50);
+  expect(natural.find(item => item.id === 'upcoming')).toMatchObject({ span: 12, column: 1, row: 1 });
+  expect(natural.find(item => item.id === 'upcoming')).not.toHaveProperty('height');
 });
 
 test('Bun SQL preserves both layouts while keeping records intact', async () => {

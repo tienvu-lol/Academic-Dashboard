@@ -42,7 +42,7 @@ async function evaluate(expression: string) {
   return result.result.value;
 }
 async function click(label: string) {
-  await evaluate("(() => { const el = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === " + JSON.stringify(label) + " || b.textContent.trim() === " + JSON.stringify(label) + "); if(!el) throw new Error('Missing button: ' + " + JSON.stringify(label) + "); if(el.getAttribute('role') === 'tab') el.dispatchEvent(new MouseEvent('mousedown', {bubbles:true, button:0})); el.click(); })()");
+  await evaluate("(() => { const el = [...document.querySelectorAll('button')].find(b => !b.closest('[hidden]') && (b.getAttribute('aria-label') === " + JSON.stringify(label) + " || b.textContent.trim() === " + JSON.stringify(label) + ")); if(!el) throw new Error('Missing button: ' + " + JSON.stringify(label) + "); if(el.getAttribute('role') === 'tab') el.dispatchEvent(new MouseEvent('mousedown', {bubbles:true, button:0})); el.click(); })()");
 }
 async function fill(label: string, value: string) {
   await evaluate("(() => { const el = [...document.querySelectorAll('label')].find(l => l.querySelector('span')?.textContent === " + JSON.stringify(label) + ")?.querySelector('input'); if(!el) throw new Error('Missing field: ' + " + JSON.stringify(label) + "); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, " + JSON.stringify(value) + "); el.dispatchEvent(new Event('input', {bubbles:true})); })()");
@@ -135,7 +135,7 @@ try {
   await fill('Start time', '09:30');
   await fill('End time', '10:45');
   await evaluate("[...document.querySelectorAll('[role=dialog] label')].find(x => x.textContent.includes('Repeat weekly')).querySelector('input').click()");
-  await click('Sun'); await click('Mon'); await click('Wed'); await click('Fri');
+  await evaluate("for (const label of ['Sun','Mon','Wed','Fri']) { const button=[...document.querySelectorAll('[role=dialog] button')].find(item => item.textContent.trim() === label); if (button?.getAttribute('aria-pressed') !== 'true') button?.click(); }");
   await evaluate("document.querySelector('[role=dialog] button[type=submit]').click()");
   await dialogClosed();
   await waitFor("[...document.querySelectorAll('.calendar-event-chip')].filter(x => x.textContent.includes('MWF Lecture')).length >= 2", 'recurring event occurrences in month');
@@ -215,8 +215,8 @@ try {
   await waitFor("document.querySelector('select[aria-label=\"Filter internship outcome\"]')?.value === 'rejected' && !!document.querySelector('.outcome-rejected')", 'rejected application filter');
   await click('Edit layout');
   await waitFor("!!document.querySelector('.layout-editing')", 'internship layout edit mode');
-  await click('Move Rejected up');
-  await waitFor("document.querySelectorAll('.workspace-widget')[2]?.getAttribute('data-widget') === 'rejected'", 'internship stat movement');
+  await click('Move Rejected down');
+  await waitFor("Number(document.querySelector('[data-widget=rejected]')?.style.getPropertyValue('--widget-row')) > 1", 'internship stat movement');
   await click('Finish editing layout');
   await click('Dashboard');
   await click('Add course');
@@ -268,31 +268,35 @@ try {
   await waitFor("document.querySelectorAll('.contribution-grid .heat-square').length > 360", 'annual activity heatmap');
   await click('Edit layout');
   await waitFor("!!document.querySelector('.layout-editing')", 'dashboard layout edit mode');
-  await evaluate("document.querySelector('button[aria-label=\"Move Schedule\"]').dispatchEvent(new DragEvent('dragstart', {bubbles:true,dataTransfer:new DataTransfer()}))");
-  await evaluate("(() => { const el = document.querySelector('[data-widget=tasks]'), r = el.getBoundingClientRect(); el.dispatchEvent(new DragEvent('dragover', {bubbles:true,cancelable:true,dataTransfer:new DataTransfer(),clientX:r.right-5,clientY:r.top+r.height/2})); })()");
-  await waitFor("!!document.querySelector('[data-widget=tasks].dock-right')", 'side-by-side drop indicator');
-  await evaluate("document.querySelector('[data-widget=tasks]').dispatchEvent(new DragEvent('drop', {bubbles:true,cancelable:true,dataTransfer:new DataTransfer()}))");
-  await waitFor("document.querySelector('[data-widget=calendar]')?.style.getPropertyValue('--widget-span') === '6'", 'calendar docked alongside tasks');
-  await evaluate("document.querySelector('button[aria-label=\"Resize Tasks width\"]').dispatchEvent(new KeyboardEvent('keydown', {bubbles:true,key:'ArrowLeft'}))");
+  await evaluate("(() => { const el=document.querySelector('[data-widget=tasks] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,'6'); el.dispatchEvent(new Event('change',{bubbles:true})); })()");
+  await waitFor("document.querySelector('[data-widget=tasks]')?.style.getPropertyValue('--widget-span') === '6' && !document.querySelector('[data-widget=calendar] select')?.disabled", 'tasks resized for modular row');
+  await evaluate("(() => { const el=document.querySelector('[data-widget=calendar] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,'6'); el.dispatchEvent(new Event('change',{bubbles:true})); })()");
+  await waitFor("document.querySelector('[data-widget=calendar]')?.style.getPropertyValue('--widget-span') === '6'", 'calendar resized for modular row');
+  await evaluate("document.querySelector('button[aria-label=\"Move Schedule\"]').scrollIntoView({block:'center'})");
+  const move = await evaluate("(() => { const h=document.querySelector('button[aria-label=\"Move Schedule\"]').getBoundingClientRect(), g=document.querySelector('.widget-grid').getBoundingClientRect(), t=document.querySelector('[data-widget=tasks]').getBoundingClientRect(); return {x:h.x+h.width/2,y:h.y+h.height/2,toX:g.left+g.width*.75,toY:t.top+t.height/2}; })()");
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: move.x, y: move.y });
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: move.x, y: move.y, button: 'left', clickCount: 1 });
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: move.toX, y: move.toY, button: 'left', buttons: 1 });
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: move.toX, y: move.toY, button: 'left', clickCount: 1 });
+  await waitFor("document.querySelector('[data-widget=calendar]')?.style.getPropertyValue('--widget-row') === '2'", 'pointer widget move saved');
+  await evaluate("document.querySelector('button[aria-label=\"Resize Tasks\"]').dispatchEvent(new KeyboardEvent('keydown', {bubbles:true,key:'ArrowLeft'}))");
   await waitFor("document.querySelector('[data-widget=tasks]')?.style.getPropertyValue('--widget-span') === '5'", 'keyboard widget width resizing');
-  await evaluate("document.querySelector('button[aria-label=\"Resize Tasks width\"]').scrollIntoView({block:'center'})");
-  const grip = await evaluate("(() => { const r=document.querySelector('button[aria-label=\"Resize Tasks width\"]').getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
+  await evaluate("document.querySelector('button[aria-label=\"Resize Tasks\"]').scrollIntoView({block:'center'})");
+  const grip = await evaluate("(() => { const r=document.querySelector('button[aria-label=\"Resize Tasks\"]').getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grip.x, y: grip.y });
   await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: grip.x, y: grip.y, button: 'left', clickCount: 1 });
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: grip.x + 120, y: grip.y, button: 'left', buttons: 1 });
   await waitFor("document.querySelector('[data-widget=tasks]')?.style.getPropertyValue('--widget-span') === '6'", 'pointer width resize preview');
   await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: grip.x + 120, y: grip.y, button: 'left', clickCount: 1 });
-  await waitFor("!document.querySelector('button[aria-label=\"Resize Tasks width\"]')?.disabled", 'pointer width resize saved');
+  await waitFor("!document.querySelector('button[aria-label=\"Resize Tasks\"]')?.disabled", 'pointer width resize saved');
   if (await evaluate("!!document.querySelector('[data-widget=tasks] .widget-body')?.style.maxHeight")) throw new Error('Width resize unexpectedly assigned a widget height');
   await click('Pin height of Tasks');
   await waitFor("document.querySelector('[data-widget=tasks] .widget-body')?.style.maxHeight === '400px'", 'explicit widget height pin');
-  await click('Move Overdue up');
-  await waitFor("document.querySelectorAll('.workspace-widget')[1]?.getAttribute('data-widget') === 'overdue'", 'dashboard stat movement');
   await click('Finish editing layout');
   await reloadPage();
   await waitFor("document.querySelector('[data-widget=calendar]')?.style.getPropertyValue('--widget-span') === '6' && document.querySelector('[data-widget=tasks] .widget-body')?.style.maxHeight === '400px'", 'layout sizes persisted after reload');
   const preferences = await evaluate("window.dashboard.load()");
-  if (preferences.workspace.dashboardSettings.layouts.internships[2].id !== 'rejected' || preferences.workspace.dashboardSettings.layouts.dashboard[1].id !== 'overdue') throw new Error('Tab layouts were not independently saved');
+  if (!preferences.workspace.dashboardSettings.layouts.internships.find((item: Record<string, unknown>) => item.id === 'rejected' && Number(item.row) > 1) || !preferences.workspace.dashboardSettings.layouts.dashboard.find((item: Record<string, unknown>) => item.id === 'calendar' && item.span === 6)) throw new Error('Tab layouts were not independently saved');
   const pair = await evaluate("(() => {const a=document.querySelector('[data-widget=tasks]').getBoundingClientRect(), b=document.querySelector('[data-widget=calendar]').getBoundingClientRect(); return {topA:a.top,topB:b.top,rightA:a.right,leftB:b.left};})()");
   if (Math.abs(pair.topA - pair.topB) > 1 || pair.rightA > pair.leftB) throw new Error('Docked widgets overlap or are not side by side: ' + JSON.stringify(pair));
   await click('Edit layout');

@@ -50,16 +50,18 @@ This is the authoritative project-level backlog. Update this file as work comple
 
 ### Layout System
 - [x] 12-column widget grid with persist-to-SQLite
-- [x] Dock left/right/before/after with smart span splitting
-- [x] Width-only resize handle (column span)
-- [x] Explicit height pin toggle (`Minimize2`) with +/- steps
+- [x] Legacy ordered-span/dock layouts normalize without data loss
+- [x] Explicit row/column coordinates with deterministic collision reflow
+- [x] Pointer-captured, frame-batched movement in both axes
+- [x] Two-axis resize with snapped width and deliberate vertical height threshold
+- [x] Four-direction keyboard movement, keyboard resizing, and live announcements
+- [x] Explicit height pin toggle (`Minimize2`) with +/- steps and natural-height restore
 - [x] `maxHeight` semantics (natural height by default, clips only when pinned)
-- [x] Empty-row slot drop zones
-- [x] Append zone below grid for empty-space drops
-- [x] Slot computation excludes the dragged widget
+- [x] Responsive visual stacking without mutating saved desktop geometry
+- [x] Edit chrome wraps without clipping content controls
 
 ### Tests
-- [x] 42 unit/integration tests across 6 files (all passing)
+- [x] 45 unit/integration tests across 6 files (all passing)
 
 ---
 
@@ -78,7 +80,7 @@ This is the authoritative project-level backlog. Update this file as work comple
 - [x] Record the compact token system, accessibility rules, anti-patterns, and ASCII wireframe in the local UI/UX contract
 
 ### Layout System Polish
-- [ ] Verify drop-to-place works in all configurations (empty space, partial rows, full rows)
+- [x] Verify move/resize collision reflow, bounds, legacy normalization, and persistence
 - [x] Ensure no widget accidentally gets a fixed height without the Pin button
 - [x] Confirm edit-mode overlay appearance is clean at representative desktop sizes
 
@@ -162,7 +164,10 @@ This is the authoritative project-level backlog. Update this file as work comple
 
 ## Phase 5 — Performance & Reliability
 
-- [ ] Widget layout: debounce resize preview to reduce re-renders during drag
+- [x] Widget layout: batch pointer previews to one `requestAnimationFrame` and persist only the final layout
+- [x] Add repeatable production Electron startup/first/warm-navigation benchmark
+- [x] Keep measured native-motion startup/render overhead within 10% of the pre-animation median
+- [x] Remove redundant activity-heatmap tooltip component trees while preserving accessible labels
 - [ ] Task list: virtualize if task count exceeds ~200 (do not pre-optimize)
 - [ ] Notes: lazy load all notes except current day note
 - [x] `verify:ui`: cover tasks, calendar events, settings, notes, credits, internships, and layout persistence

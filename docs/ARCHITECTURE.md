@@ -184,13 +184,16 @@ Violations of these rules require a DECISIONS.md entry and explicit user approva
 
 ## Widget Layout System
 
-The widget grid is a 12-column CSS Grid. Each widget has:
-- `span`: number of columns (3–12)
-- `height` (optional): when set, widget body clips at `maxHeight` and scrolls
+The widget workspace is a responsive 12-column CSS Grid. Each persisted widget has:
+- `span`: number of desktop columns (3–12)
+- `column` and `row` (optional paired coordinates): explicit desktop placement
+- `height` (optional): a deliberate Pin/two-axis-resize cap; otherwise content uses natural height
 
-Layout state is persisted per-page in `dashboardSettings.layouts`. The `src/data/layout.ts` module is fully pure — no React, no DOM.
+Legacy ordered-span layouts remain valid. `positionedLayout` derives stable coordinates for them, bounds placements, and resolves collisions without losing widget IDs. `moveWidget` and `resizeGridWidget` let the active widget own its requested target while displaced widgets flow to the first collision-free row. Narrow CSS breakpoints stack the rendered modules without rewriting their saved desktop geometry.
 
-Key functions: `widgetPositions`, `dockWidget`, `placeInSlot`, `appendWidget`, `emptySlots`, `resizeWidget`.
+Layout state is persisted per page in `dashboardSettings.layouts`. The placement and collision engine in `src/data/layout.ts` remains fully pure — no React or DOM. Pointer capture, grid measurement, frame-batched previews, keyboard controls, and one final persistence write live in `src/features/widget-layout.tsx`.
+
+The legacy docking helpers remain available for saved-layout compatibility and focused tests. New edit-mode interaction uses `positionedLayout`, `moveWidget`, and `resizeGridWidget`.
 
 ---
 
