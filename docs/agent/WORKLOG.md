@@ -5,6 +5,27 @@ Chronological log of agent sessions. Most recent first.
 
 ---
 
+## 2026-09-20 — UI visual scheme refinement
+
+**Agent:** Antigravity (Gemini)
+**Branch:** Native-Overhaul
+
+### Work Completed
+- Added typography adjustments based on reference images, updating headings to be lighter (`font-weight: 300` and `450`), and tracking tighter (`letter-spacing: -0.065em`, `-0.055em`).
+- Increased panel and card radii from 14px/12px to 24px/18px to create smoother, more "landscape" shapes in line with the requested artistic flair.
+- Enhanced the box-shadows on cards and active widgets with a more pronounced, albeit still subtle, blue and red accent glow.
+- Kept all existing layout and behavior unchanged, relying entirely on CSS variable and token overrides in `src/styles/globals.css`.
+- Marked all UI/UX documentation steps and CSS implementation steps as completed in `CURRENT_WORK.md`.
+
+### Test Results
+- bun run typecheck: Pass (0 errors)
+- bun run lint: Pass (0 errors, 2 pre-existing warnings)
+- bun run test: Pass (42/42 tests)
+- bun run verify:ui: Captured UI screenshots; visual adjustments were confirmed through generated artifacts.
+
+### Outstanding
+- UI/UX implementation for this visual refinement scope is complete. Future tasks remain in `MVP_ROADMAP.md`.
+
 ## 2026-09-20 — Calendar MVP completion
 
 **Agent:** Codex

@@ -3,28 +3,28 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: #080808;
+  --color-card: #0A0B0E;
   --color-card-foreground: var(--foreground);
   --color-popover: #111111;
   --color-popover-foreground: var(--foreground);
   --color-primary: #5D9DFC;
   --color-primary-foreground: #000000;
-  --color-secondary: #191919;
+  --color-secondary: #191B20;
   --color-secondary-foreground: var(--foreground);
-  --color-muted: #151515;
+  --color-muted: #14161A;
   --color-muted-foreground: #99968e;
-  --color-accent: #242424;
+  --color-accent: #22252B;
   --color-accent-foreground: var(--foreground);
   --color-destructive: #FF4444;
-  --color-border: #252525;
-  --color-input: #303030;
+  --color-border: #292D35;
+  --color-input: #323740;
   --color-ring: #5D9DFC;
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 13px;
+  --radius-xl: 16px;
 }
-:root { color-scheme: dark; --background: #000; --surface: #080808; --interactive: #171715; --foreground: #FFF7E4; --text-secondary: #9A958B; --subtle-border: #292925; --blue: #5D9DFC; --green: #78A985; --warning: #D9A441; --red: #FF5C5C; --focus: #8DB9FF; font-family: "Segoe UI", system-ui, sans-serif; font-size: 14px; }
+:root { color-scheme: dark; --background: #000; --surface: #0A0B0E; --surface-raised: #0D0F13; --interactive: #191B20; --foreground: #FFF9EE; --text-secondary: #A09B92; --subtle-border: #292D35; --blue: #5D9DFC; --green: #78A985; --warning: #D9A441; --red: #FF5C5C; --focus: #8DB9FF; --panel-shadow: inset 0 1px 0 #ffffff0a, 0 16px 40px #00000052, 0 0 28px #5d9dfc08; font-family: "Helvetica Neue", Arial, "Segoe UI", sans-serif; font-size: 14px; }
 * { box-sizing: border-box; }
 body { margin: 0; background: #000; color: var(--foreground); overflow: hidden; }
 button, input, select, textarea { font: inherit; }
@@ -626,3 +626,57 @@ input[type=checkbox] { accent-color: var(--blue); }
   .page-dashboard .filter-tabs { flex-wrap: wrap; }
   .page-dashboard .calendar-footnote .completed-key { width: 100%; margin-left: 0; }
 }
+
+/* Reference-led visual refinement: editorial type and restrained dimensional surfaces. */
+body { font-weight: 400; letter-spacing: -.008em; }
+.compact-shell h1 {
+  font-size: clamp(30px, 2.7vw, 36px);
+  font-weight: 300;
+  letter-spacing: -.065em;
+  line-height: 1;
+  margin-bottom: 7px;
+}
+.page-date { color: #aaa59d; font-size: 11px; font-weight: 400; letter-spacing: -.015em; }
+h2, .heading-toggle, .compact-card-header [data-slot=card-title] { font-weight: 450; letter-spacing: -.025em; }
+.page-dashboard h2, .page-dashboard .heading-toggle { font-weight: 500; }
+.stat-number, .workspace-layout-dashboard .stat-number, .credits-total b, .credit-overview > strong {
+  font-weight: 300;
+  letter-spacing: -.055em;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-layout-dashboard .stat-number { font-size: 27px; }
+.stat-top, .dense-task-table th, .task-list-footer, .calendar-footnote, .page-header p { letter-spacing: .005em; }
+.titlebar-drag-region span { color: #88847d; letter-spacing: .2em; }
+
+.panel,
+[data-slot=card]:not(.credit-plan),
+.editor-dialog,
+[data-slot=dialog-content] {
+  border-color: #2c3038;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: inset 0 1px 0 #ffffff0e, 0 16px 40px #00000062, 0 0 32px #5d9dfc12;
+}
+.page-dashboard .panel {
+  border-color: #2c3038;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: inset 0 1px 0 #ffffff0e, 0 16px 40px #00000062, 0 0 32px #5d9dfc12;
+}
+.workspace-layout-dashboard .workspace-widget:is([data-widget=upcoming], [data-widget=total], [data-widget=overdue]) .stat-card {
+  min-height: 62px;
+  padding: 11px 16px;
+  border-color: #2d3138;
+  border-radius: 18px;
+  background: var(--surface-raised);
+  box-shadow: inset 0 1px 0 #ffffff0b, 0 12px 28px #00000042;
+}
+.workspace-layout-dashboard .workspace-widget[data-widget=upcoming] .stat-card {
+  box-shadow: inset 0 1px 0 #5d9dfc42, 0 12px 28px #00000042, 0 0 32px #5d9dfc20;
+}
+.workspace-layout-dashboard .workspace-widget[data-widget=overdue] .stat-red {
+  box-shadow: inset 0 1px 0 #ff5c5c3d, 0 12px 28px #00000042, 0 0 32px #ff5c5c18;
+}
+.workspace-layout-dashboard .widget-grid { gap: 18px; }
+.compact-shell .panel { border-radius: 24px; }
+.section-heading { min-height: 48px; }

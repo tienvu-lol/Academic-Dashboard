@@ -99,7 +99,23 @@ Use semantic tokens in shared CSS. Do not add near-duplicate shades when an exis
 | Page gutter | `clamp(16px, 3vw, 40px)` |
 | Content width | `1320px` maximum; test 1200–1360px if composition changes |
 
-Body text uses the native Segoe UI/system stack. Do not import fonts. Use weight, width, spacing, and numeric alignment deliberately. Avoid uppercase labels except a genuinely conventional abbreviation or code.
+Body text uses a dependency-free neo-grotesk system stack: `Helvetica Neue`, Arial, `Segoe UI`, then generic sans-serif. Do not import fonts. Use weight, width, spacing, and numeric alignment deliberately. Avoid uppercase labels except a genuinely conventional abbreviation or code.
+
+---
+
+## Reference-Informed Visual Refinement
+
+The September 2026 visual references add a controlled editorial layer without changing the Dashboard composition:
+
+- **Typography:** page titles and large numerals use light weights, tight negative tracking, and generous line-height discipline inspired by the monochrome integration dashboard. Section titles stay medium weight; dense body and metadata remain compact and readable.
+- **Landscape modules:** retain the existing wide task and schedule surfaces and horizontal summary strip. “Landscape” describes proportion and internal alignment, not a new widget order.
+- **Smoother containment:** primary panels and dialogs use 12–14px radii; compact controls and nested modules use roughly 8px. Avoid pill-shaped containers except true statuses or segmented controls.
+- **Surface depth:** use near-black layered surfaces, a slightly brighter top/inner edge, and soft black elevation. Borders remain visible enough to communicate containment.
+- **Accent flare:** blue glow is reserved for primary actions, focus, active navigation, and selected/important surfaces. Amber may warm secondary highlights. Red remains functional urgency/destruction only.
+- **Flare budget:** glow must remain peripheral and low contrast. No luminous body text, large decorative gradients, or effects on every row/card. If an effect is noticed before the content, reduce it.
+- **Consistency:** panels, course cards, requirement cards, note indexes, dialogs, inputs, tabs, calendar events, and editor recurrence containers should read as one family even when their density differs.
+
+This refinement is implemented through shared CSS tokens and overrides. It must not require new component wrappers, a layout rewrite, or a font dependency.
 
 ---
 
