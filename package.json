@@ -21,6 +21,22 @@
   "engines": {
     "bun": ">=1.4.2"
   },
+  "build": {
+    "appId": "com.academicdashboard.desktop",
+    "productName": "Academic Dashboard",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "assets/**",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/app-icon.ico"
+    },
+    "linux": {
+      "icon": "assets/app-icon.png"
+    }
+  },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0",
     "class-variance-authority": "^0.7.1",

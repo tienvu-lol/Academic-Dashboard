@@ -95,6 +95,9 @@ try {
   };
   await send('Runtime.enable'); await send('Log.enable');
   await waitFor("document.querySelector('.task-name-button')?.textContent.includes('CS Exam')", 'dashboard and SQL load');
+  if (await evaluate("document.body.textContent.includes('Auto-Prioritize')")) throw new Error('Removed Auto-Prioritize control is still visible');
+  await waitFor("document.querySelector('[role=tab][data-state=active]')?.textContent.trim().toLowerCase() === 'agenda'", 'agenda is the default schedule view');
+  if (await evaluate("document.querySelectorAll('.schedule-agenda-day').length") !== 7) throw new Error('Agenda should render exactly seven days');
   const sandbox = await evaluate("({ node: typeof window.require, bridge: typeof window.dashboard?.load })");
   if (sandbox.node !== 'undefined' || sandbox.bridge !== 'function') throw new Error('Unexpected renderer isolation');
   await click('Add task');
@@ -268,6 +271,14 @@ try {
   await waitFor("document.querySelectorAll('.contribution-grid .heat-square').length > 360", 'annual activity heatmap');
   await click('Edit layout');
   await waitFor("!!document.querySelector('.layout-editing')", 'dashboard layout edit mode');
+  await evaluate("(() => { const el=document.querySelector('[data-widget=tasks] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,'3'); el.dispatchEvent(new Event('change',{bubbles:true})); })()");
+  await waitFor("document.querySelector('[data-widget=tasks]')?.style.getPropertyValue('--widget-span') === '3'", 'tasks resized to compact width');
+  const compactTaskFilters = await evaluate("(() => { const search=document.querySelector('[data-widget=tasks] .search-field input')?.getBoundingClientRect(), buttons=[...document.querySelectorAll('[data-widget=tasks] .filter-tabs button')].map(button => button.getBoundingClientRect()), category=document.querySelector('[data-widget=tasks] select[aria-label=\"Filter tasks by category\"]')?.getBoundingClientRect(); if(!search || !buttons.length || !category) throw new Error('Missing task filters'); const overlap=buttons.some(rect => rect.left < category.right && rect.right > category.left && rect.top < category.bottom && rect.bottom > category.top); const verticalGap=Math.min(...buttons.map(rect => rect.top))-search.bottom; return { search: search.toJSON(), buttons: buttons.map(rect => rect.toJSON()), category: category.toJSON(), overlap, verticalGap }; })()");
+  if (compactTaskFilters.overlap) throw new Error('Compact task filters overlap: ' + JSON.stringify(compactTaskFilters));
+  if (compactTaskFilters.verticalGap > 24) throw new Error('Compact task filters have excessive vertical gap: ' + JSON.stringify(compactTaskFilters));
+  const compactTaskShot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  await mkdir(path.join(root, 'artifacts'), { recursive: true });
+  await Bun.write(path.join(root, 'artifacts', 'ui-tasks-compact.png'), Buffer.from(compactTaskShot.data, 'base64'));
   await evaluate("(() => { const el=document.querySelector('[data-widget=tasks] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,'6'); el.dispatchEvent(new Event('change',{bubbles:true})); })()");
   await waitFor("document.querySelector('[data-widget=tasks]')?.style.getPropertyValue('--widget-span') === '6' && !document.querySelector('[data-widget=calendar] select')?.disabled", 'tasks resized for modular row');
   await evaluate("(() => { const el=document.querySelector('[data-widget=calendar] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,'6'); el.dispatchEvent(new Event('change',{bubbles:true})); })()");

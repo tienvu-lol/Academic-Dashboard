@@ -5,6 +5,18 @@ Decisions are recorded here when they change module structure, add/remove depend
 
 ---
 
+## 2026-09-22 — Agenda-first schedule and stable renderer motion
+
+**Context:** The Dashboard schedule opened as a large sparse month grid and week/day views exposed a tall 24-hour canvas. At the same time, duplicated global CSS, broad glow shadows, forced compositing transforms, page entrance animation, and per-widget IntersectionObservers produced conflicting styles and visible rendering jank. The user explicitly requested a schedule redesign and smoother overall flow.
+
+**Decision:** Make a compact seven-day Agenda the default Dashboard schedule view while retaining Month, Week, and Day modes. Consolidate schedule controls into a clearer hierarchy and keep the schedule clock active in every mode so Today state remains correct across midnight. Remove duplicated workspace CSS, observer-driven widget entrances, page remount animation, persistent `translate3d`/`will-change`, brightness filters, and broad glow stacks. Layout editing keeps frame-batched pointer updates but uses restrained opacity and shadow feedback only.
+
+**Alternatives considered:** Keep Month as the default and only reduce cell height (still sparse and weak for immediate planning); make Week the default (still presents a large time canvas); install an animation or calendar package (not authorized and unnecessary); keep the effects and disable GPU acceleration globally (would mask CSS causes and degrade the entire Electron renderer).
+
+**Consequences:** The schedule answers “what is next?” in a compact scan, existing month/week/day behavior remains available, long-running sessions update date state, and Chromium has fewer composited layers/effects to repaint. UI smoke tests now assert the agenda default and removed Auto-Prioritize control; the production benchmark remains the performance regression gate.
+
+---
+
 ## 2026-09-21 — Native coordinate grid and measured motion
 
 **Context:** The requested edit experience referenced GridStack and Motion, but adding dependencies requires explicit approval. The existing ordered-span HTML drag/drop editor could not provide reliable two-axis placement, frame-batched previews, or deliberate vertical resizing. Page switching also mounted hundreds of tooltip primitives in the activity heatmap.

@@ -13,6 +13,7 @@ import type { Entity } from '../data/academic';
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOUR_HEIGHT = 52;
 const EVENT_COLORS: Record<CalendarEvent['type'], string> = { class: '#5D9DFC', study: '#AFA0DE', meeting: '#E6C36B', personal: '#5C946E', other: '#8B929D' };
+type ScheduleMode = 'agenda' | 'month' | 'week' | 'day';
 function shift(date: Date, days: number) { const next = new Date(date); next.setDate(next.getDate() + days); return next; }
 function timeLabel(value: string) { const [hour, minute] = value.split(':').map(Number); return new Date(2000, 0, 1, hour, minute).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
 
@@ -28,7 +29,7 @@ interface PlannerProps {
 
 export function Planner(props: PlannerProps) {
   const { tasks, events, courses, settings, editTask, addEvent, editEvent } = props;
-  const [mode, setMode] = useState('month'), [date, setDate] = useState(new Date()), [now, setNow] = useState(new Date());
+  const [mode, setMode] = useState<ScheduleMode>('agenda'), [date, setDate] = useState(new Date()), [now, setNow] = useState(new Date());
   const timeScroll = useRef<HTMLDivElement>(null);
   const scheduled = tasks.filter(task => task.due), today = localCalendarDate(now);
   const loads = calendarLoads(tasks);
@@ -38,7 +39,7 @@ export function Planner(props: PlannerProps) {
   const onDay = (day: Date) => orderedTasks(scheduled.filter(task => taskDay(task) === localCalendarDate(day)), settings).sort((a, b) => Number(a.completed) - Number(b.completed));
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
   if (mode === 'week') start.setDate(start.getDate() - start.getDay());
-  const days = Array.from({ length: mode === 'week' ? 7 : 1 }, (_, index) => shift(start, index));
+  const days = Array.from({ length: mode === 'week' || mode === 'agenda' ? 7 : 1 }, (_, index) => shift(start, index));
   const monthFirst = new Date(date.getFullYear(), date.getMonth(), 1, 12), monthLast = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12);
   const rangeStart = localCalendarDate(mode === 'month' ? shift(monthFirst, -monthFirst.getDay()) : days[0]);
   const rangeEnd = localCalendarDate(mode === 'month' ? shift(monthLast, 6 - monthLast.getDay()) : days.at(-1)!);
@@ -52,18 +53,17 @@ export function Planner(props: PlannerProps) {
   const eventColor = (event: CalendarEvent) => text(courseFor(event)?.['Dashboard/Color']) || EVENT_COLORS[event.type];
 
   useEffect(() => {
-    if (mode === 'month') return;
     let interval: ReturnType<typeof setInterval> | undefined;
     const timeout = setTimeout(() => {
       setNow(new Date());
       interval = setInterval(() => setNow(new Date()), 60_000);
     }, 60_000 - Date.now() % 60_000);
     return () => { clearTimeout(timeout); if (interval) clearInterval(interval); };
-  }, [mode]);
+  }, []);
 
   const viewKey = `${mode}:${localCalendarDate(date)}`;
   useEffect(() => {
-    if (mode === 'month' || !days.some(day => localCalendarDate(day) === localCalendarDate(new Date()))) return;
+    if (mode === 'month' || mode === 'agenda' || !days.some(day => localCalendarDate(day) === localCalendarDate(new Date()))) return;
     const frame = requestAnimationFrame(() => {
       const target = timeScroll.current;
       if (target) target.scrollTop = Math.max(0, (new Date().getHours() + new Date().getMinutes() / 60) * HOUR_HEIGHT - target.clientHeight / 2);
@@ -72,10 +72,10 @@ export function Planner(props: PlannerProps) {
   // `viewKey` intentionally excludes the minute timer so scrolling happens only on view entry/navigation.
   }, [viewKey]);
 
-  const move = (direction: number) => setDate(mode === 'month' ? new Date(date.getFullYear(), date.getMonth() + direction, 1) : shift(date, direction * (mode === 'week' ? 7 : 1)));
+  const move = (direction: number) => setDate(mode === 'month' ? new Date(date.getFullYear(), date.getMonth() + direction, 1) : shift(date, direction * (mode === 'week' || mode === 'agenda' ? 7 : 1)));
   const periodLabel = mode === 'day'
     ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-    : mode === 'week'
+    : mode === 'week' || mode === 'agenda'
       ? `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${shift(start, 6).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
       : date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
@@ -119,10 +119,29 @@ export function Planner(props: PlannerProps) {
     </td>;
   }
 
+  function agendaDay(day: Date) {
+    const key = localCalendarDate(day), dayTasks = onDay(day), dayEvents = eventDays[key] ?? [];
+    const total = dayTasks.length + dayEvents.length;
+    const shownEvents = dayEvents.slice(0, 3), shownTasks = dayTasks.slice(0, Math.max(0, 3 - shownEvents.length));
+    const hidden = total - shownEvents.length - shownTasks.length;
+    return <article className={'schedule-agenda-day ' + (key === today ? 'is-today' : '')} key={key}>
+      <Button variant="ghost" className="agenda-day-heading" onClick={() => { setDate(day); setMode('day'); }}>
+        <span>{key === today ? 'Today' : day.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+        <strong>{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</strong>
+        <small>{total ? `${total} item${total === 1 ? '' : 's'}` : 'Clear'}</small>
+      </Button>
+      <div className="agenda-day-items">
+        {shownEvents.map(eventChip)}{shownTasks.map((task, index) => taskChip(task, index))}
+        {!total && <button type="button" className="agenda-empty" onClick={() => addEvent(key)}>No commitments <span>+ Add</span></button>}
+        {hidden > 0 && <Button variant="ghost" size="sm" className="agenda-more" onClick={() => { setDate(day); setMode('day'); }}>+{hidden} more</Button>}
+      </div>
+    </article>;
+  }
+
   return <Card className="panel planner">
-    <div className="section-heading"><h2><CalendarDays size={17} />Schedule</h2><div className="schedule-heading-actions"><Tabs value={mode} onValueChange={setMode}><TabsList aria-label="Schedule view">{['month', 'week', 'day'].map(value => <TabsTrigger value={value} key={value}>{value}</TabsTrigger>)}</TabsList></Tabs><Button size="sm" onClick={() => addEvent(localCalendarDate(date))}><Plus />Add event</Button></div></div>
-    <div className="calendar-toolbar"><h3>{periodLabel}</h3><div className="toolbar-actions"><Button size="sm" variant="ghost" onClick={() => setDate(new Date())}>Today</Button><Button size="icon-sm" variant="outline" aria-label="Previous period" onClick={() => move(-1)}><ChevronLeft /></Button><Button size="icon-sm" variant="outline" aria-label="Next period" onClick={() => move(1)}><ChevronRight /></Button></div></div>
-    {mode === 'month' ? <Calendar className="full-calendar" month={date} onMonthChange={setDate} hideNavigation showOutsideDays components={{ Day: PlannerDay }} /> : <div className="time-scroll" ref={timeScroll}><div className="schedule-time-grid" style={{ '--days': days.length } as CSSProperties}>
+    <div className="section-heading"><h2><CalendarDays size={17} />Schedule</h2><Button size="sm" onClick={() => addEvent(localCalendarDate(date))}><Plus />Add event</Button></div>
+    <div className="calendar-toolbar"><h3>{periodLabel}</h3><div className="schedule-heading-actions"><Tabs value={mode} onValueChange={value => setMode(value as ScheduleMode)}><TabsList aria-label="Schedule view">{(['agenda', 'month', 'week', 'day'] as const).map(value => <TabsTrigger value={value} key={value}>{value}</TabsTrigger>)}</TabsList></Tabs><Button size="sm" variant="ghost" onClick={() => setDate(new Date())}>Today</Button><Button size="icon-sm" variant="outline" aria-label="Previous period" onClick={() => move(-1)}><ChevronLeft /></Button><Button size="icon-sm" variant="outline" aria-label="Next period" onClick={() => move(1)}><ChevronRight /></Button></div></div>
+    {mode === 'agenda' ? <div className="schedule-agenda">{days.map(agendaDay)}</div> : mode === 'month' ? <Calendar className="full-calendar" month={date} onMonthChange={setDate} hideNavigation showOutsideDays components={{ Day: PlannerDay }} /> : <div className="time-scroll" ref={timeScroll}><div className="schedule-time-grid" style={{ '--days': days.length } as CSSProperties}>
       <div className="schedule-corner">Local time</div>{days.map(day => { const key = localCalendarDate(day), current = key === today; return <Button variant="ghost" className={'time-day-heading ' + loadClass(day) + (current ? ' current-day-heading' : '')} key={key} onClick={() => { setDate(day); setMode('day'); }}><span>{dayNames[day.getDay()]} <b>{day.getDate()}</b></span>{current && <small>Today</small>}{heat(day) > 0 && <small>{loadFor(day).pending} due</small>}</Button>; })}
       <div className="schedule-corner schedule-due-label">Due</div>{days.map(day => { const allDay = onDay(day).filter(task => !task.due.includes('T')); return <div className="all-day-cell" key={localCalendarDate(day)}>{allDay.length ? allDay.map((task, index) => taskChip(task, index)) : <span className="empty-due">—</span>}</div>; })}
       <div className="schedule-time-axis">{Array.from({ length: 24 }, (_, hour) => <span key={hour} style={{ top: hour * HOUR_HEIGHT }}>{String(hour).padStart(2, '0')}:00</span>)}</div>{days.map(dayTrack)}

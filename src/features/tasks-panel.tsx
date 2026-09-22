@@ -20,7 +20,7 @@ function taskDueLabel(task: Task) {
   });
 }
 
-export function TasksPanel({ workspace, tasks, change, prioritize, busy, edit, remove, categories }: { workspace: Workspace; tasks: Task[]; change: Change; prioritize?: () => Promise<boolean>; busy: boolean; edit(task?: Task): void; remove(task: Task): void; categories(): void }) {
+export function TasksPanel({ workspace, tasks, change, busy, edit, remove, categories }: { workspace: Workspace; tasks: Task[]; change: Change; busy: boolean; edit(task?: Task): void; remove(task: Task): void; categories(): void }) {
   const [open, setOpen] = useState(true), [query, setQuery] = useState(''), [filter, setFilter] = useState('Active');
   const [category, setCategory] = useState(''), [over, setOver] = useState(''), [announcement, setAnnouncement] = useState('');
   const dragged = useRef('');
@@ -41,7 +41,6 @@ export function TasksPanel({ workspace, tasks, change, prioritize, busy, edit, r
     <div className="section-heading">
       <h2><Button variant="ghost" className="heading-toggle" onClick={() => setOpen(!open)}>{open ? <ChevronDown /> : <ChevronRight />}Tasks <Badge variant="secondary">{tasks.length}</Badge></Button></h2>
       <div className="toolbar-actions">
-        {prioritize && <Button variant="ghost" size="sm" title="AI Auto-Prioritize Tasks" disabled={busy} onClick={() => { setAnnouncement('Running AI Prioritization...'); void prioritize().then(ok => setAnnouncement(ok ? 'AI Prioritization complete.' : 'AI Prioritization failed.')); }}>✨ Auto-Prioritize</Button>}
         {!!settings.taskOrder?.length && <Button variant="ghost" size="sm" title="Restore automatic priority order" onClick={() => void change(draft => { draft.dashboardSettings = { ...settingsFor(draft), taskOrder: [] }; })}><RotateCcw />Use priority order</Button>}
         <Button variant="ghost" size="sm" onClick={categories}><Tags />Categories</Button>
       </div>

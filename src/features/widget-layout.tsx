@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, GripVertical, Minus, Minimize2, Plus, RotateCcw, Scaling } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { layoutFor, moveWidget, positionedLayout, resizeGridWidget, type LayoutPage, type PositionedWidget, type WidgetPlacement } from '../data/layout';
@@ -29,8 +29,7 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
   const previewRef = useRef<WidgetPlacement[] | undefined>(undefined);
   const pendingPoint = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = useRef<number | undefined>(undefined);
-  // Direct DOM reference to the active widget for smooth visual drag without re-renders
-  const activeWidgetEl = useRef<HTMLElement | null>(null);
+
   const layout = positionedLayout(preview ?? saved);
   const positions = new Map(layout.map(item => [item.id, item]));
 
@@ -38,27 +37,6 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
     if (frame.current !== undefined) cancelAnimationFrame(frame.current);
   }, []);
 
-  useLayoutEffect(() => {
-    const root = grid.current;
-    if (!root) return;
-    const nodes = [...root.querySelectorAll<HTMLElement>('.workspace-widget')];
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
-      nodes.forEach(node => node.classList.add('widget-motion-visible'));
-      return;
-    }
-    const observed = nodes.slice(4);
-    observed.forEach(node => node.classList.add('widget-motion-awaiting'));
-    const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        entry.target.classList.remove('widget-motion-awaiting');
-        entry.target.classList.add('widget-motion-visible');
-        observer.unobserve(entry.target);
-      }
-    }, { root: document.querySelector('main'), rootMargin: '48px 0px', threshold: 0.06 });
-    observed.forEach(node => observer.observe(node));
-    return () => observer.disconnect();
-  }, [page, widgets.length]);
 
   function updatePreview(next: WidgetPlacement[]) {
     previewRef.current = next;
@@ -124,10 +102,7 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
     if (event.button !== 0 || busy) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const widget = event.currentTarget.closest<HTMLElement>('.workspace-widget');
-    const body = widget?.querySelector<HTMLElement>('.widget-body');
-    // Store reference to the active widget DOM node for direct transform updates
-    activeWidgetEl.current = widget ?? null;
+    const body = event.currentTarget.closest<HTMLElement>('.workspace-widget')?.querySelector<HTMLElement>('.widget-body');
     interaction.current = {
       kind,
       id: item.id,
@@ -148,10 +123,7 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
       cancelAnimationFrame(frame.current);
       frame.current = undefined;
     }
-    // Reset direct DOM transform on the active widget
-    if (activeWidgetEl.current) {
-      activeWidgetEl.current = null;
-    }
+
     interaction.current = undefined;
     pendingPoint.current = undefined;
     setInteractionKind(undefined);

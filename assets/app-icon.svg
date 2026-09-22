@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title description">
+  <title id="title">Academic Dashboard application icon</title>
+  <desc id="description">A cream graduation cap on a blue tile over a dark rounded square.</desc>
+  <rect width="256" height="256" rx="52" fill="#080A0E"/>
+  <rect x="28" y="28" width="200" height="200" rx="44" fill="#5D9DFC"/>
+  <path d="M48 111 128 68l80 43-80 43-80-43Z" fill="#FFF7E4"/>
+  <path d="M78 132v30c0 17 22 31 50 31s50-14 50-31v-30l-50 27-50-27Z" fill="#FFF7E4"/>
+  <path d="M200 115v47" stroke="#080A0E" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="200" cy="174" r="10" fill="#080A0E"/>
+  <path d="M128 68 48 111l80 43 80-43-80-43Z" fill="none" stroke="#080A0E" stroke-opacity=".14" stroke-width="4"/>
+</svg>

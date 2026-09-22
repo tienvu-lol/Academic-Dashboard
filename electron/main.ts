@@ -20,7 +20,6 @@ async function workspaceRequest(event: Electron.IpcMainInvokeEvent, method: stri
 }
 ipcMain.handle('workspace:load', event => workspaceRequest(event, 'GET'));
 ipcMain.handle('workspace:save', (event, body) => workspaceRequest(event, 'PUT', body));
-ipcMain.handle('workspace:prioritize', event => workspaceRequest(event, 'POST', undefined, '/prioritize'));
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -30,6 +29,7 @@ function positiveInteger(value: string | undefined, fallback: number) {
 function createWindow() {
   const window = new BrowserWindow({
     title: "Academic Dashboard",
+    icon: path.join(app.getAppPath(), 'assets', 'app-icon.png'),
     width: 1280,
     height: 820,
     minWidth: 900,
@@ -62,6 +62,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  app.setAppUserModelId('com.academicdashboard.desktop');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [
       "default-src 'self'; script-src 'self'" + (developmentServerUrl ? " 'unsafe-inline'" : "") + "; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'" + (developmentServerUrl ? " " + new URL(developmentServerUrl).origin.replace('http:', 'ws:') : "") + "; object-src 'none'; frame-src 'none'"
