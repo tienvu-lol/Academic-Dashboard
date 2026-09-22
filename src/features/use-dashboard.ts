@@ -3,7 +3,7 @@ import type { Workspace } from '../platform/workspace';
 import { todayLocal } from '../internships/model';
 
 export interface Snapshot { workspace: Workspace; revision: number }
-declare global { interface Window { dashboard?: { load(): Promise<Snapshot>; save(snapshot: Snapshot): Promise<Snapshot>; prioritize(): Promise<Snapshot> } } }
+declare global { interface Window { dashboard?: { load(): Promise<Snapshot>; save(snapshot: Snapshot): Promise<Snapshot>; prioritize(): Promise<Snapshot>; onUpdate(cb: () => void): () => void; } } }
 export function useDashboard() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState('');
@@ -16,7 +16,10 @@ export function useDashboard() {
       const next = await window.dashboard.load(); current.current = next; setSnapshot(next); setError('');
     } catch (e) { setError(String(e)); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return window.dashboard?.onUpdate ? window.dashboard.onUpdate(() => { void load(); }) : undefined;
+  }, [load]);
   useEffect(() => {
     let day = todayLocal();
     const timer = setInterval(() => {

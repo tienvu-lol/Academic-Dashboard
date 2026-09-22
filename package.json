@@ -16,12 +16,14 @@
     "build:electron": "bun scripts/build-electron.ts",
     "build": "bun run typecheck && bun run build:renderer && bun run build:electron",
     "start": "bun run build && bun scripts/start.ts",
+    "mcp": "bun scripts/mcp.ts",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "engines": {
     "bun": ">=1.4.2"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@typesafe-ai/sdk": "^0.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "latest",
@@ -33,7 +35,8 @@
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
     "recharts": "3.8.0",
-    "tailwind-merge": "latest"
+    "tailwind-merge": "latest",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@shadcn/lint": "latest",

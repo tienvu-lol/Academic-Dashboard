@@ -5,6 +5,18 @@ Decisions are recorded here when they change module structure, add/remove depend
 
 ---
 
+## 2026-09-22 — External MCP bridge over the authenticated workspace service
+
+**Context:** External AI clients need to control the live dashboard without embedding an agent runtime, provider credentials, or chat UI in the renderer. Direct SQLite access from a second process would bypass revision checks and create competing authorities for workspace state.
+
+**Decision:** Add `@modelcontextprotocol/sdk` and `zod` and expose a `stdio` MCP bridge in `scripts/mcp.ts`. The bridge reads a per-process loopback URL and bearer token written by `dashboard-server.ts`, then performs all reads and mutations through the existing validated workspace HTTP API. Backend mutations notify Electron through authenticated SSE so the renderer reloads immediately.
+
+**Alternatives considered:** Embed an LLM/agent loop in the app (rejected as unnecessary scope and credential surface); let the MCP process open SQLite directly (rejected because it bypasses the repository queue, validation, and revision conflicts); expose an unauthenticated fixed HTTP port (rejected as unsafe and collision-prone).
+
+**Consequences:** The desktop app must be running before MCP tools can access workspace data. External clients can launch `bun run mcp`, while persistence and domain validation remain centralized. The initial tool set covers state, task creation/completion, and dashboard widget movement; internship and calendar tools remain future work.
+
+---
+
 ## 2026-09-21 — Native coordinate grid and measured motion
 
 **Context:** The requested edit experience referenced GridStack and Motion, but adding dependencies requires explicit approval. The existing ordered-span HTML drag/drop editor could not provide reliable two-axis placement, frame-batched previews, or deliberate vertical resizing. Page switching also mounted hundreds of tooltip primitives in the activity heatmap.

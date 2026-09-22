@@ -76,6 +76,28 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  function listenForWorkspaceEvents() {
+    const endpoint = process.env.DASHBOARD_DATA_URL;
+    if (!endpoint || !process.env.DASHBOARD_DATA_TOKEN) return;
+    fetch(endpoint + '/events', {
+      headers: { Authorization: 'Bearer ' + process.env.DASHBOARD_DATA_TOKEN }
+    }).then(async response => {
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const text = new TextDecoder().decode(value);
+        if (text.trim().length > 0) {
+          BrowserWindow.getAllWindows().forEach(w => w.webContents.send('workspace:update'));
+        }
+      }
+    }).catch(() => {
+      setTimeout(listenForWorkspaceEvents, 2000);
+    });
+  }
+  listenForWorkspaceEvents();
 });
 
 app.on("window-all-closed", () => {
