@@ -95,6 +95,7 @@ try {
   };
   await send('Runtime.enable'); await send('Log.enable');
   await waitFor("document.querySelector('.task-name-button')?.textContent.includes('CS Exam')", 'dashboard and SQL load');
+  if (await evaluate("document.body.textContent.includes('Auto-Prioritize') || document.body.textContent.includes('Use priority order')")) throw new Error('Removed task reprioritization control is still visible');
   const sandbox = await evaluate("({ node: typeof window.require, bridge: typeof window.dashboard?.load })");
   if (sandbox.node !== 'undefined' || sandbox.bridge !== 'function') throw new Error('Unexpected renderer isolation');
   await click('Add task');

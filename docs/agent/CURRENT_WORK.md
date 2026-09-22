@@ -1,93 +1,81 @@
 # Current Work
 ## Objective
-Add an initial external MCP bridge so supported AI clients can read and mutate the live Academic Dashboard without embedding an agent runtime or chat interface in the app.
+Remove every leftover task reprioritization control from the dashboard, including the AI action and the manual-order reset action, and eliminate the AI renderer/Electron wiring.
 
 ## Scope
 ### In Scope
-- Run a standard MCP server over `stdio`.
-- Discover the live dashboard through a per-process loopback URL and bearer token.
-- Expose workspace summary, task creation/completion, and dashboard widget movement as typed MCP tools.
-- Notify the Electron renderer through SSE when an external MCP mutation is persisted.
-- Document client configuration and the security/process boundary.
+- Remove the visible `Auto-Prioritize` button from the Tasks header.
+- Remove the visible `Use priority order` reset/reprioritization button from the Tasks header.
+- Remove the `prioritize` prop path through `App`, `Dashboard`, and `TasksPanel`.
+- Remove the renderer hook method, preload bridge method, and Electron IPC handler used only by the AI button.
+- Add regression coverage that prevents either control and the renderer bridge from returning.
+- Verify the dashboard visually after removal.
 
 ### Out of Scope
-- Embedded agent UI, LLM providers, or API-key management.
-- Internship and calendar MCP mutation tools.
-- Remote/network MCP access, authentication accounts, or cloud synchronization.
-- Direct SQLite access from the MCP process.
+- Changing normal priority sorting or drag/keyboard manual task ordering.
+- Removing stored AI priority scores from existing workspace data.
+- Removing the currently unreachable backend `/workspace/prioritize` route or TypeSafe settings/dependency.
+- Changing the MCP bridge.
 
 ## Current Repository State
 - Active branch: `Native-Overhaul`.
-- Local branch was synchronized with `origin/Native-Overhaul` before this work.
-- The initial MCP bridge and live-update path are implemented and verified locally.
+- The branch started at `81492f5`, synchronized with `origin/Native-Overhaul`.
+- Both task reprioritization controls have been removed and the fix is verified locally.
 
 ## TODO
-- [x] Add the MCP SDK and a package script for launching the bridge.
-- [x] Publish the authenticated live workspace endpoint for local MCP clients.
-- [x] Implement the four initial MCP tools.
-- [x] Add authenticated SSE revision notifications.
-- [x] Wire Electron/preload/React live reload with listener cleanup.
-- [x] Verify protocol discovery, task creation/completion, widget movement, persistence, and SSE.
-- [x] Run project checks, production build, and Electron UI verification.
-- [x] Update architecture and decision documentation.
+- [x] Add and run a failing regression test for the leftover controls/wiring.
+- [x] Remove both task reprioritization buttons and the AI renderer/Electron path.
+- [x] Run focused and full verification.
+- [x] Review the Electron screenshot and update this handoff.
+- [x] Commit and push the verified fix to `origin/Native-Overhaul`.
 
 ## Expected Files Touched
-- `bun.lock`
-- `package.json`
-- `scripts/mcp.ts`
-- `src/platform/dashboard-server.ts`
-- `electron/main.ts`
-- `electron/preload.ts`
-- `src/features/use-dashboard.ts`
-- `docs/agent/MCP_ARCHITECTURE.md`
-- `docs/agent/DECISIONS.md`
 - `docs/agent/CURRENT_WORK.md`
+- `tests/no-auto-prioritize.test.ts` (new)
+- `src/features/tasks-panel.tsx`
+- `src/features/app.tsx`
+- `src/features/use-dashboard.ts`
+- `electron/preload.ts`
+- `electron/main.ts`
+- `scripts/verify-ui.ts`
 
 ## Acceptance Criteria
-- [x] An MCP client can launch `bun run mcp` and discover the supported tools.
-- [x] MCP can create and complete a task through the validated workspace API.
-- [x] MCP can move a known dashboard widget through the existing layout engine.
-- [x] External mutations persist through the repository and emit an SSE revision event.
-- [x] The renderer reload listener is removable and does not accumulate across remounts.
-- [x] Loopback requests remain token-authenticated and browser-origin requests remain rejected.
-- [x] Typecheck, lint, tests, build, Electron UI verification, and protocol smoke verification pass.
+- [x] No visible Auto-Prioritize or `Use priority order` reprioritization control remains.
+- [x] `TasksPanel` has no prioritization callback prop.
+- [x] The renderer preload API and Electron main process expose no prioritization action.
+- [x] Normal priority display/sorting and drag/keyboard manual ordering remain intact.
+- [x] Focused regression test, lint, typecheck, tests, and Electron UI verification pass.
+- [x] The verified change is committed and pushed to `Native-Overhaul`.
 
 ## Implementation Notes
-- `dashboard-server.ts` writes `~/.academic-dashboard/server.json` with the authenticated `/workspace` URL and removes it on a clean shutdown.
-- `scripts/mcp.ts` never opens SQLite. It uses the existing workspace GET/PUT API, revision conflict behavior, domain task completion logic, and collision-safe layout engine.
-- The service emits an authenticated `/workspace/events` SSE message after persisted revisions. Electron forwards this as `workspace:update`; `useDashboard` reloads and unregisters the listener on cleanup.
-- The MCP bridge currently exposes `dashboard_get_state`, `tasks_create`, `tasks_complete`, and `dashboard_move_widget`.
-- Added `@modelcontextprotocol/sdk` and explicit `zod` dependencies; the architectural decision is recorded in `DECISIONS.md`.
+- Root cause: commit `51ac988` reintroduced the TypeSafe callback through the entire renderer stack after the earlier UI cleanup, while the existing `Use priority order` reset action remained as a second reprioritization control.
+- Removed the AI callback from `TasksPanel`, `Dashboard`, `App`, `useDashboard`, preload, and Electron IPC.
+- Removed the `Use priority order` action and its now-unused `RotateCcw` icon import.
+- The minimal fix removes only user-facing invocation paths. Backend cleanup is intentionally separate because the request concerns the leftover controls, not a TypeSafe subsystem migration.
 
 ## Verification
-- `bun run check`: passed; 45 tests, 0 failures, with two pre-existing lint warnings.
-- `bun run build`: passed; renderer and Electron bundles built successfully.
-- `bun run verify:ui`: passed on the final run. An earlier run passed all assertions but exited during Windows temporary-directory cleanup with `EBUSY`; the immediate rerun completed normally.
-- MCP protocol smoke test: passed using an isolated live dashboard service and SDK client.
-  - Discovered all four tools.
-  - Created and completed a task.
-  - Moved the Tasks widget and confirmed persisted coordinates.
-  - Received the SSE update notification.
+- Focused regression test was observed failing first for `Auto-Prioritize`, then for `Use priority order`, and passed after each corresponding removal.
+- `bun test tests/no-auto-prioritize.test.ts`: 1 passed, 0 failed, 8 assertions.
+- `bun run check`: passed; 46 tests, 0 failures, 370 assertions. Two pre-existing lint warnings remain.
+- `bun run verify:ui`: passed, including a runtime assertion that neither reprioritization label is visible.
+- Reviewed `artifacts/ui-dashboard-1440x900.png`: the Tasks header contains only Categories on the right; there is no awkward gap, collision, or visual blocker.
 - `git diff --check`: passed immediately before commit.
 
 ## Completed This Session
-- Corrected the MCP connection file to point at `/workspace` rather than the server root.
-- Made task creation produce valid priority relations and task completion use existing domain behavior.
-- Made widget movement use the existing layout engine instead of ad hoc object mutation.
-- Fixed SSE stream-controller cleanup and renderer listener cleanup.
-- Replaced the earlier embedded-agent architecture draft with the implemented external MCP design.
+- Removed both visible reprioritization controls.
+- Removed the unused AI renderer-to-Electron invocation path.
+- Added static and Electron runtime regression coverage.
+- Verified the Tasks header visually at 1440×900.
 
 ## Remaining Work
-- None for the initial MCP bridge scope.
-- Internship and calendar MCP tools may be added in a separately scoped change.
+- None.
 
 ## Known Regressions / Risks
-- The desktop app must be running before an MCP client can call workspace tools.
-- A hard process termination can leave `server.json` behind; calls still fail safely because the ephemeral port/token no longer connects.
-- The existing two unrelated lint warnings remain in `tests/academic.test.mjs` and `src/internships/model.ts`.
+- The backend prioritize route remains unreachable from the renderer; removing it and TypeSafe configuration/dependencies requires a separately scoped cleanup.
+- Existing saved manual task order remains active, but there is no longer a toolbar action to clear it; drag or Alt+Arrow can still change the order.
 
 ## Exact Next Action
 - Wait for user.
 
 ## Handoff Summary
-The initial external MCP bridge is implemented, verified, committed, and ready on `Native-Overhaul`. It provides four local `stdio` tools backed by the existing authenticated workspace service, sends live SSE updates to Electron, and keeps SQLite ownership in the dashboard process. Project checks, production build, UI smoke verification, and an end-to-end MCP protocol smoke test pass.
+Both leftover task reprioritization controls are gone. The AI callback path through React, preload, and Electron IPC is removed, the manual-order reset button is removed, normal task ordering remains functional, and focused/full/UI verification pass. The verified fix is committed and pushed on `Native-Overhaul`.

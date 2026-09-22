@@ -20,7 +20,6 @@ async function workspaceRequest(event: Electron.IpcMainInvokeEvent, method: stri
 }
 ipcMain.handle('workspace:load', event => workspaceRequest(event, 'GET'));
 ipcMain.handle('workspace:save', (event, body) => workspaceRequest(event, 'PUT', body));
-ipcMain.handle('workspace:prioritize', event => workspaceRequest(event, 'POST', undefined, '/prioritize'));
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);
