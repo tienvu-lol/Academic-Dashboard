@@ -9,6 +9,7 @@
     "dev": "bun scripts/dev.ts",
     "test": "bun test",
     "verify:ui": "bun scripts/verify-ui.ts",
+    "benchmark:ui": "bun scripts/benchmark-ui.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "build:renderer": "vite build",

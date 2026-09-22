@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, memo, Suspense, useMemo, useState } from 'react';
 import { LayoutDashboard, BriefcaseBusiness, Settings2, PanelLeftClose, PanelLeftOpen, Plus, ChevronDown, ChevronRight, Search, Tags, Pencil, Trash2, GraduationCap, ArrowUpRight, Clock3, ListChecks, CircleAlert, BookOpen, BookOpenText, SlidersHorizontal, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,14 +15,16 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import type { Workspace } from '../platform/workspace';
 import type { Entity } from '../data/academic';
-import type { Internship } from '../internships/model';
+import { todayLocal, type Internship } from '../internships/model';
+import { eventsFor, type CalendarEvent } from '../data/calendar';
+import { CalendarEventEditor } from './calendar-event-editor';
 
 type Page = 'Dashboard' | 'Daily notes' | 'Internships' | 'Settings';
 const TaskAnalytics = lazy(() => import('./activity').then(module => ({ default: module.TaskAnalytics })));
 const InternshipAnalytics = lazy(() => import('./activity').then(module => ({ default: module.InternshipAnalytics })));
 const CategoryManager = lazy(() => import('./categories').then(module => ({ default: module.CategoryManager })));
 const CreditPlan = lazy(() => import('./credit-plan').then(module => ({ default: module.CreditPlan })));
-type Editor = { type: 'task'; task?: Task; date?: string } | { type: 'course'; course?: Entity } | { type: 'internship'; item?: Internship } | { type: 'categories'; internships?: boolean };
+type Editor = { type: 'task'; task?: Task; date?: string } | { type: 'event'; event?: CalendarEvent; date?: string; time?: string } | { type: 'course'; course?: Entity } | { type: 'internship'; item?: Internship } | { type: 'categories'; internships?: boolean };
 type Removal = { name: string; detail?: string; update(draft: Workspace): void };
 function dateLabel(value: string) {
   if (!value) return 'No due date';
@@ -39,23 +41,30 @@ export function App() {
   const [editingLayout, setEditingLayout] = useState(false);
   const [editor, setEditor] = useState<Editor>();
   const [removal, setRemoval] = useState<Removal>();
-  const settings = workspace ? settingsFor(workspace) : undefined;
+  const settings = useMemo(() => workspace ? settingsFor(workspace) : undefined, [workspace]);
+  const today = new Date();
   const slim = settings?.sidebarSlim ?? false;
   const internships = workspace?.internships.internships ?? [];
-  const categories = [...new Set([...(settings?.internshipCategories ?? []), ...internships.flatMap(x => x.tags)])];
+  const categories = useMemo(() => [...new Set([...(settings?.internshipCategories ?? []), ...internships.flatMap(x => x.tags)])], [settings, internships]);
+  function navigate(name: Page) {
+    if (!confirmLeaveNote()) return;
+    setPage(name);
+    setPeek(false);
+    document.querySelector('main')?.scrollTo(0, 0);
+  }
   return <div className={'app-shell compact-shell ' + (slim ? 'sidebar-hidden ' : '') + (peek ? 'sidebar-peek' : '')}>
     <div className="titlebar-drag-region"><Button variant="ghost" size="icon-sm" className="titlebar-sidebar-toggle" disabled={!workspace || busy} aria-label={slim ? 'Show sidebar' : 'Hide sidebar'} onClick={() => { setPeek(false); void change(draft => { draft.dashboardSettings = { ...settingsFor(draft), sidebarSlim: !slim }; }); }}>{slim ? <PanelLeftOpen /> : <PanelLeftClose />}</Button><span>ACADEMIC <i>/</i> {page}</span></div>
     {slim && <button className="sidebar-edge" aria-label="Reveal navigation" onMouseEnter={() => setPeek(true)} onFocus={() => setPeek(true)} onClick={() => void change(draft => { draft.dashboardSettings = { ...settingsFor(draft), sidebarSlim: false }; })} />}
     <aside className="sidebar" inert={slim && !peek} aria-hidden={slim && !peek} onMouseLeave={() => setPeek(false)}><div className="brand"><div className="brand-mark"><GraduationCap size={19} /></div></div>
-      <nav aria-label="Main navigation">{([{ name: 'Dashboard', icon: LayoutDashboard }, { name: 'Daily notes', icon: BookOpenText }, { name: 'Internships', icon: BriefcaseBusiness }, { name: 'Settings', icon: Settings2 }] as const).map(({ name, icon: Icon }) => <Button variant="ghost" key={name} title={name} aria-label={name} aria-current={page === name ? 'page' : undefined} className={'nav-item ' + (page === name ? 'active' : '')} onClick={() => { if (!confirmLeaveNote()) return; setPage(name); setPeek(false); document.querySelector('main')?.scrollTo(0, 0); }}><Icon size={18} /><span>{name}</span></Button>)}</nav>
+      <nav aria-label="Main navigation">{([{ name: 'Dashboard', icon: LayoutDashboard }, { name: 'Daily notes', icon: BookOpenText }, { name: 'Internships', icon: BriefcaseBusiness }, { name: 'Settings', icon: Settings2 }] as const).map(({ name, icon: Icon }) => <Button variant="ghost" key={name} title={name} aria-label={name} aria-current={page === name ? 'page' : undefined} className={'nav-item ' + (page === name ? 'active' : '')} onClick={() => navigate(name)}><Icon size={18} /><span>{name}</span></Button>)}</nav>
       <div className="sidebar-footer">{(page === 'Dashboard' || page === 'Internships') ? <Button variant={editingLayout ? 'secondary' : 'ghost'} className="layout-mode-toggle" aria-label={editingLayout ? 'Finish editing layout' : 'Edit layout'} aria-pressed={editingLayout} disabled={!workspace || busy} onClick={() => setEditingLayout(!editingLayout)}>{editingLayout ? <Check size={17} /> : <SlidersHorizontal size={17} />}<span>{editingLayout ? 'Done editing' : 'Edit layout'}</span></Button> : <small>Local workspace</small>}<small role="status">{busy ? 'Saving…' : 'Bun SQL'}</small></div>
     </aside>
-    <main><div className="content-wrap"><header className="page-header"><div><div className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()}</div><h1>{page}</h1><p>{page === 'Dashboard' ? 'Your courses, deadlines, and everything in between.' : page === 'Internships' ? 'Applications, deadlines, and daily activity.' : page === 'Daily notes' ? 'Your daily Markdown notebook. Search, edit, and export.' : 'Set the priorities that shape your day.'}</p></div>{workspace && (page === 'Dashboard' || page === 'Internships') && <Button onClick={() => setEditor({ type: page === 'Dashboard' ? 'task' : 'internship' })}><Plus size={16} />{page === 'Dashboard' ? 'Add task' : 'Add internship'}</Button>}</header>
+    <main><div key={page} className={'content-wrap page-' + page.toLowerCase().replace(' ', '-')}><header className="page-header"><div><time className="page-date" dateTime={todayLocal(today)}>{today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</time><h1>{page}</h1>{page !== 'Dashboard' && <p>{page === 'Internships' ? 'Applications, deadlines, and daily activity.' : page === 'Daily notes' ? 'Your daily Markdown notebook. Search, edit, and export.' : 'Set the priorities that shape your day.'}</p>}</div>{workspace && (page === 'Dashboard' || page === 'Internships') && <Button className="page-primary-action" onClick={() => setEditor({ type: page === 'Dashboard' ? 'task' : 'internship' })}><Plus size={16} />{page === 'Dashboard' ? 'Add task' : 'Add internship'}</Button>}</header>
       {error && <div role="alert" className="error-banner"><CircleAlert size={18} /><span>{error}</span><Button variant="outline" size="sm" onClick={() => void load()}>Reload workspace</Button></div>}
       {!workspace ? <div className="panel empty-state"><p>{error ? 'Your saved data has been left untouched.' : 'Opening your workspace…'}</p></div> : page === 'Dashboard' ? <Dashboard workspace={workspace} change={change} busy={busy} editing={editingLayout} edit={setEditor} remove={setRemoval} /> : page === 'Daily notes' ? <DailyNotes workspace={workspace} change={change} /> : page === 'Internships' ? <Internships workspace={workspace} change={change} busy={busy} editing={editingLayout} categories={categories} edit={setEditor} remove={setRemoval} /> : <Settings workspace={workspace} change={change} />}
-      <footer className="page-footer"><span>Less scattered. More focused.</span><span>ACADEMIC WORKSPACE</span></footer>
     </div></main>
     {workspace && editor?.type === 'task' && <TaskEditor workspace={workspace} task={editor.task} initialDate={editor.date} change={change} close={() => setEditor(undefined)} />}
+    {workspace && editor?.type === 'event' && <CalendarEventEditor workspace={workspace} event={editor.event} initialDate={editor.date} initialTime={editor.time} change={change} close={() => setEditor(undefined)} remove={editor.event ? () => { const event = editor.event!; setEditor(undefined); setRemoval({ name: event.title, detail: event.recurrence ? 'This removes the entire recurring series. Individual occurrence deletion is not supported.' : 'This scheduled event will be removed from your calendar.', update: draft => { draft.calendarEvents = (draft.calendarEvents ?? []).filter(item => item.id !== event.id); } }); } : undefined} />}
     {workspace && editor?.type === 'course' && <CourseEditor course={editor.course} count={coursesFor(workspace).length} change={change} close={() => setEditor(undefined)} />}
     {editor?.type === 'internship' && <InternshipEditor item={editor.item} categories={categories} change={change} close={() => setEditor(undefined)} />}
     {workspace && editor?.type === 'categories' && <Suspense fallback={null}><CategoryManager workspace={workspace} internships={editor.internships} change={change} close={() => setEditor(undefined)} /></Suspense>}
@@ -63,18 +72,18 @@ export function App() {
   </div>;
 }
 interface SectionProps { workspace: Workspace; edit(editor: Editor): void; remove(removal: Removal): void }
-function Dashboard({ workspace, change, busy, editing, edit, remove }: SectionProps & { change: Change; busy: boolean; editing: boolean }) {
+const Dashboard = memo(function Dashboard({ workspace, change, busy, editing, edit, remove }: SectionProps & { change: Change; busy: boolean; editing: boolean }) {
   const tasks = tasksFor(workspace), settings = settingsFor(workspace), stats = summaryFor(tasks);
   return <WidgetLayout page="dashboard" workspace={workspace} change={change} busy={busy} editing={editing} widgets={[
-    ...[{ id: 'upcoming', label: 'Due within 48 hours', value: stats.upcoming, icon: Clock3, color: 'blue' }, { id: 'total', label: 'Total tasks', value: stats.total, icon: ListChecks, color: 'green' }, { id: 'overdue', label: 'Overdue', value: stats.overdue, icon: CircleAlert, color: 'red' }].map(({ id, label, value, icon: Icon, color }) => ({ id, title: label, content: <Card className={'stat-card stat-' + color}><div className="stat-top"><Icon size={17} /><span>{label}</span></div><div className="stat-number">{value}</div></Card> })),
-    { id: 'tasks', title: 'Your tasks', content: <TasksPanel workspace={workspace} tasks={tasks} change={change} busy={busy} edit={task => edit({ type: 'task', task })} categories={() => edit({ type: 'categories' })} remove={task => remove({ name: task.name, update: draft => { draft.academic.collections[collectionFor(task.kind)] = draft.academic.collections[collectionFor(task.kind)].filter(x => x['fibery/id'] !== task.id); } })} /> },
-    { id: 'calendar', title: 'Your calendar', content: <Planner tasks={tasks} settings={settings} edit={task => edit({ type: 'task', task })} add={date => edit({ type: 'task', date })} /> },
+    ...[{ id: 'upcoming', label: 'Due soon', value: stats.upcoming, icon: Clock3, color: 'blue' }, { id: 'total', label: 'Active tasks', value: tasks.filter(task => !task.completed).length, icon: ListChecks, color: 'yellow' }, { id: 'overdue', label: 'Overdue', value: stats.overdue, icon: CircleAlert, color: stats.overdue > 0 ? 'red' : 'neutral' }].map(({ id, label, value, icon: Icon, color }) => ({ id, title: label, content: <Card className={'stat-card stat-' + color}><div className="stat-top"><Icon size={16} /><span>{label}</span></div><div className="stat-number">{value}</div></Card> })),
+    { id: 'tasks', title: 'Tasks', content: <TasksPanel workspace={workspace} tasks={tasks} change={change} busy={busy} edit={task => edit({ type: 'task', task })} categories={() => edit({ type: 'categories' })} remove={task => remove({ name: task.name, update: draft => { draft.academic.collections[collectionFor(task.kind)] = draft.academic.collections[collectionFor(task.kind)].filter(x => x['fibery/id'] !== task.id); } })} /> },
+    { id: 'calendar', title: 'Schedule', content: <Planner tasks={tasks} events={eventsFor(workspace)} courses={coursesFor(workspace)} settings={settings} editTask={task => edit({ type: 'task', task })} addEvent={(date, time) => edit({ type: 'event', date, time })} editEvent={event => edit({ type: 'event', event })} /> },
     { id: 'timeline', title: 'Due vs. done', content: <Suspense fallback={<Card className="panel compact-empty">Loading activity…</Card>}><TaskAnalytics workspace={workspace} /></Suspense> },
     { id: 'completions', title: 'Completion activity', content: <ActivityHeatmap title="Completion activity" noun="tasks completed" counts={activityCounts(taskHistory(workspace).map(t => t.done))} /> },
     { id: 'notes', title: 'Daily notes', content: <DailyNotes workspace={workspace} change={change} widget /> },
     { id: 'courses', title: 'Your courses', content: <Courses workspace={workspace} change={change} edit={edit} remove={remove} /> },
   ]} />;
-}
+});
 function Courses({ workspace, change, edit, remove }: SectionProps & { change: Change }) {
   const courses = coursesFor(workspace);
   const [termFilter, setTermFilter] = useState('All semesters');
@@ -92,7 +101,7 @@ function Courses({ workspace, change, edit, remove }: SectionProps & { change: C
     {!courses.length && <Empty title="Build your semester." detail="Add courses, choose their calendar colors, and track your credits." action={<Button variant="outline" size="sm" onClick={() => edit({ type: 'course' })}><Plus />Add your first course</Button>} />}
   </TabsContent><TabsContent value="credits"><Suspense fallback={<p className="compact-empty">Loading credit plan…</p>}><CreditPlan workspace={workspace} change={change} /></Suspense></TabsContent></Tabs></Card>;
 }
-function Internships({ workspace, categories, change, busy, editing, edit, remove }: SectionProps & { categories: string[]; change: Change; busy: boolean; editing: boolean }) {
+const Internships = memo(function Internships({ workspace, categories, change, busy, editing, edit, remove }: SectionProps & { categories: string[]; change: Change; busy: boolean; editing: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<string>();
   const [query, setQuery] = useState('');
@@ -111,4 +120,4 @@ function Internships({ workspace, categories, change, busy, editing, edit, remov
     { id: 'outcomes', title: 'Application outcomes', content: <Suspense fallback={<Card className="panel compact-empty">Loading outcomes…</Card>}><InternshipAnalytics workspace={workspace} /></Suspense> },
     { id: 'activity', title: 'Application activity', content: <ActivityHeatmap title="Application activity" noun="applications submitted" counts={activityCounts(items.map(x => x.appliedDate))} /> },
   ]} />;
-}
+});

@@ -5,6 +5,7 @@ import { ACADEMIC_TYPES, validateAcademicData, type AcademicData, type AcademicT
 import { parseDatabase, type Internship, type InternshipDatabase } from "../internships/model";
 import type { Preferences } from "../dashboard";
 import type { Workspace } from "./workspace";
+import { eventsFor, validateCalendarEvents, type CalendarEvent } from '../data/calendar';
 
 type JsonRow = { key: string; value: string };
 type AcademicRow = { collection: AcademicType; payload: string };
@@ -90,6 +91,18 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
       CREATE INDEX IF NOT EXISTS internships_outcome
       ON internships (outcome, applied_date)
     `;
+    await this.sql`
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id TEXT PRIMARY KEY,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        payload TEXT NOT NULL
+      )
+    `;
+    await this.sql`
+      CREATE INDEX IF NOT EXISTS calendar_events_range
+      ON calendar_events (start_date, end_date)
+    `;
   }
 
   async load(): Promise<Workspace | null> {
@@ -107,6 +120,9 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
     `) as JsonRow[];
     const internshipRows = (await this.sql`
       SELECT payload FROM internships ORDER BY rowid
+    `) as PayloadRow[];
+    const eventRows = (await this.sql`
+      SELECT payload FROM calendar_events ORDER BY rowid
     `) as PayloadRow[];
 
     const collections = Object.fromEntries(
@@ -137,23 +153,29 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
       internships: internshipRows.map((row) => JSON.parse(row.payload) as Internship),
     };
     parseDatabase(JSON.stringify(internships));
+    const calendarEvents = eventRows.map(row => JSON.parse(row.payload) as CalendarEvent);
+    validateCalendarEvents(calendarEvents);
     return {
       format: "academic-dashboard-workspace",
       version: 2,
       academic,
       internships,
       preferences: JSON.parse(required(meta, "preferences")) as Preferences,
+      calendarEvents,
       ...(meta.has('dashboard.settings') ? { dashboardSettings: JSON.parse(required(meta, 'dashboard.settings')) } : {}),
     };
   }
 
   async save(workspace: Workspace) {
+    const calendarEvents = eventsFor(workspace);
+    validateCalendarEvents(calendarEvents);
     await this.sql.begin(async (tx) => {
       await tx`DELETE FROM workspace_meta`;
       await tx`DELETE FROM academic_entities`;
       await tx`DELETE FROM academic_documents`;
       await tx`DELETE FROM academic_options`;
       await tx`DELETE FROM internships`;
+      await tx`DELETE FROM calendar_events`;
 
       const metadata = [
         ["format", workspace.format],
@@ -189,6 +211,14 @@ export class BunSqlWorkspaceRepository implements WorkspaceRepository {
           INSERT INTO internships (id, company, role, applied_date, outcome, payload)
           VALUES (${internship.id}, ${internship.company}, ${internship.role}, ${internship.appliedDate}, ${internship.outcome}, ${JSON.stringify(internship)})
         `;
+      for (const event of calendarEvents) {
+        const startDate = event.recurrence?.startDate ?? event.date;
+        const endDate = event.recurrence?.endDate ?? event.date;
+        await tx`
+          INSERT INTO calendar_events (id, start_date, end_date, payload)
+          VALUES (${event.id}, ${startDate}, ${endDate}, ${JSON.stringify(event)})
+        `;
+      }
     });
   }
 

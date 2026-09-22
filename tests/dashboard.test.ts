@@ -29,11 +29,13 @@ test('summary uses the next 48 hours and excludes completed tasks from overdue',
 });
 test('course and category removal preserves tasks and clears dangling associations', () => {
   const w = fixture(), category = w.academic.options['University/Category'][0].id;
+  w.calendarEvents!.push({ id: 'class', title: 'Lecture', courseId: 'cs', type: 'class', date: '2026-09-01', startTime: '09:00', endTime: '10:00' });
   w.academic.collections['University/To-Dos'].push({ 'fibery/id': 'todo', 'University/Name': 'Personal task', 'University/Category': { 'fibery/id': category } });
   removeCourse(w, 'cs'); removeCategory(w, category);
   expect(tasksFor(w)).toHaveLength(6);
   expect(tasksFor(w).find(t => t.id === 'hw')?.courseId).toBe('');
   expect(tasksFor(w).find(t => t.id === 'todo')?.categoryId).toBe('');
+  expect(w.calendarEvents![0].courseId).toBe('');
   validateDashboardWorkspace(w);
 });
 test('Bun SQL keeps empty categories and dashboard settings after reload', async () => {

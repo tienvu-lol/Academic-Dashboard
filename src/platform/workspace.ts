@@ -7,6 +7,7 @@ import {
 } from "../data/academic";
 import { emptyDatabase, parseDatabase, type InternshipDatabase } from "../internships/model";
 import { DEFAULT_PREFS, type Preferences } from "../dashboard";
+import { validateCalendarEvents, type CalendarEvent } from "../data/calendar";
 import { BunSqlWorkspaceRepository, type WorkspaceRepository } from "./database";
 
 export interface Workspace {
@@ -15,6 +16,7 @@ export interface Workspace {
   academic: AcademicData;
   internships: InternshipDatabase;
   preferences: Preferences;
+  calendarEvents?: CalendarEvent[];
   dashboardSettings?: import('../data/planning').DashboardSettings;
 }
 
@@ -32,6 +34,7 @@ const empty = (): Workspace => ({
   academic: emptyAcademicData(),
   internships: emptyDatabase(),
   preferences: { ...DEFAULT_PREFS },
+  calendarEvents: [],
 });
 
 let repository: WorkspaceRepository = new BunSqlWorkspaceRepository();
@@ -72,6 +75,8 @@ export function validateWorkspace(value: unknown): asserts value is Workspace {
   if (!data.preferences || Object.keys(DEFAULT_PREFS).some(
     (key) => typeof data.preferences[key as keyof Preferences] !== "boolean",
   )) throw new Error("Invalid dashboard preferences.");
+  validateCalendarEvents(data.calendarEvents ?? []);
+  data.calendarEvents ??= [];
   data.preferences.showCalendar = false;
 }
 

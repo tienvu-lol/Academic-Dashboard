@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { dockWidget, layoutFor, resizeWidget, validLayouts, widgetPositions } from '../src/data/layout';
+import { appendWidget, dockWidget, emptySlots, layoutFor, moveWidget, placeInSlot, positionedLayout, resizeGridWidget, resizeWidget, validLayouts, widgetPositions } from '../src/data/layout';
 import { calendarLoads, emptyWorkspace, settingsFor, tasksFor, validateDashboardWorkspace } from '../src/data/planning';
 import { BunSqlWorkspaceRepository } from '../src/platform/database';
 
@@ -48,6 +48,112 @@ test('layout preferences are optional, tab-specific, and validated', () => {
     { dashboard: [{ id: 'tasks', span: 6 }, { id: 'tasks', span: 6 }] },
     { settings: [] }, { toString: [] }, null, [],
   ]) expect(validLayouts(invalid)).toBe(false);
+});
+
+test('left/right docking splits available row space, not always 50/50', () => {
+  // Build a layout where 'total' and 'overdue' share row 1 (used=8), leaving 4 cols free.
+  // Docking 'upcoming' to the right of 'total' should give upcoming=4, total=4 (sharing the 8 free cols evenly)
+  // because after removing 'upcoming' from the row, total alone uses 4 of 12, leaving 8 available.
+  const original = layoutFor('dashboard'); // upcoming(4), total(4), overdue(4) all in row 1
+  // Remove overdue from row 1 to create slack: upcoming(4), total(4), [gap of 4], tasks(12)...
+  const withoutOverdue = original.filter(x => x.id !== 'overdue').map(x => ({ ...x }));
+  const docked = dockWidget(withoutOverdue, 'upcoming', 'total', 'right');
+  const totalItem = docked.find(x => x.id === 'total')!;
+  const upcomingItem = docked.find(x => x.id === 'upcoming')!;
+  // total was alone in its row after removing upcoming; full 12 available → each gets 6
+  expect(totalItem.span + upcomingItem.span).toBe(12);
+  expect(totalItem.span).toBeGreaterThanOrEqual(3);
+  expect(upcomingItem.span).toBeGreaterThanOrEqual(3);
+  // Both must land on the same row
+  const positions = widgetPositions(docked);
+  const tIdx = docked.findIndex(x => x.id === 'total');
+  const uIdx = docked.findIndex(x => x.id === 'upcoming');
+  expect(positions[tIdx].row).toBe(positions[uIdx].row);
+});
+
+test('emptySlots detects trailing open columns in partially-filled rows', () => {
+  // A layout with two stats (4+4=8) leaves 4 cols free in row 1.
+  const partial = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'tasks', span: 12 }];
+  const slots = emptySlots(partial);
+  expect(slots).toHaveLength(1);
+  expect(slots[0]).toEqual({ row: 1, column: 9, span: 4 });
+  // Full rows produce no slots.
+  const full = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'overdue', span: 4 }, { id: 'tasks', span: 12 }];
+  expect(emptySlots(full)).toHaveLength(0);
+  // A slot smaller than 3 columns is suppressed.
+  const tinyGap = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'overdue', span: 3 }, { id: 'tasks', span: 12 }];
+  // 4+4+3=11, gap=1 < 3 → no slot
+  expect(emptySlots(tinyGap)).toHaveLength(0);
+});
+
+test('placeInSlot fills the trailing empty space and bails when slot is gone', () => {
+  const layout = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'tasks', span: 12 }];
+  // Move 'tasks' into the 4-col gap at the end of row 1.
+  const result = placeInSlot(layout, 'tasks', 1);
+  const tasksItem = result.find(x => x.id === 'tasks')!;
+  // tasks should fill exactly the 4 remaining cols (12 - 4 - 4 = 4)
+  expect(tasksItem.span).toBe(4);
+  // tasks must be positioned immediately after the last widget in row 1
+  const positions = widgetPositions(result);
+  const tIdx = result.findIndex(x => x.id === 'tasks');
+  expect(positions[tIdx].row).toBe(1);
+  expect(positions[tIdx].column).toBe(9);
+  // Bails and returns original when the specified row doesn't exist after source removal.
+  const noSlot = placeInSlot(layout, 'upcoming', 99);
+  expect(noSlot).toEqual(layout);
+});
+
+test('appendWidget fills trailing row space or starts a fresh full-width row', () => {
+  // Partial last row (4+4=8, slack=4): source fills the slack.
+  const partial = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'tasks', span: 12 }];
+  const filled = appendWidget(partial, 'tasks');
+  expect(filled[filled.length - 1]).toEqual({ id: 'tasks', span: 4 });
+  expect(widgetPositions(filled)[filled.length - 1]).toEqual({ column: 9, row: 1 });
+  // Full last row (4+4+4=12): source moves to a fresh row as span=12.
+  const full = [{ id: 'upcoming', span: 4 }, { id: 'total', span: 4 }, { id: 'overdue', span: 4 }, { id: 'tasks', span: 12 }];
+  const appended = appendWidget(full, 'tasks');
+  expect(appended[appended.length - 1]).toEqual({ id: 'tasks', span: 12 });
+  expect(widgetPositions(appended)[appended.length - 1].row).toBe(2);
+  // Source is removed from its original position.
+  expect(appended.filter(x => x.id === 'tasks')).toHaveLength(1);
+});
+
+test('positioned layouts preserve legacy packing and resolve saved collisions', () => {
+  const legacy = layoutFor('dashboard');
+  expect(positionedLayout(legacy).slice(0, 4).map(({ column, row }) => ({ column, row }))).toEqual([
+    { column: 1, row: 1 }, { column: 5, row: 1 }, { column: 9, row: 1 }, { column: 1, row: 2 },
+  ]);
+  const collided = positionedLayout([
+    { id: 'upcoming', span: 6, column: 1, row: 1 },
+    { id: 'total', span: 6, column: 4, row: 1 },
+  ]);
+  expect(collided[0]).toMatchObject({ column: 1, row: 1 });
+  expect(collided[1]).toMatchObject({ column: 7, row: 1 });
+});
+
+test('grid moves own the target cell and push collisions without overlap', () => {
+  const moved = moveWidget(layoutFor('dashboard'), 'calendar', 5, 1);
+  const calendar = moved.find(item => item.id === 'calendar')!;
+  expect(calendar).toMatchObject({ column: 1, row: 1, span: 12 });
+  const positioned = positionedLayout(moved);
+  for (let index = 0; index < positioned.length; index++) {
+    const item = positioned[index];
+    expect(item.column).toBeGreaterThanOrEqual(1);
+    expect(item.column + item.span).toBeLessThanOrEqual(13);
+    for (const other of positioned.slice(index + 1)) {
+      expect(item.row === other.row && item.column < other.column + other.span && other.column < item.column + item.span).toBe(false);
+    }
+  }
+});
+
+test('grid resizing preserves coordinates, bounds dimensions, and reflows collisions', () => {
+  const base = positionedLayout(layoutFor('dashboard'));
+  const resized = resizeGridWidget(base, 'upcoming', 8, 360);
+  expect(resized.find(item => item.id === 'upcoming')).toMatchObject({ span: 8, height: 360, column: 1, row: 1 });
+  expect(resized.find(item => item.id === 'total')).toMatchObject({ column: 9, row: 1 });
+  const natural = resizeGridWidget(resized, 'upcoming', 50);
+  expect(natural.find(item => item.id === 'upcoming')).toMatchObject({ span: 12, column: 1, row: 1 });
+  expect(natural.find(item => item.id === 'upcoming')).not.toHaveProperty('height');
 });
 
 test('Bun SQL preserves both layouts while keeping records intact', async () => {

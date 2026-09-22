@@ -25,7 +25,7 @@ export function useDashboard() {
     }, 30000);
     return () => clearInterval(timer);
   }, [load]);
-  async function change(update: (draft: Workspace) => void): Promise<boolean> {
+  const change = useCallback(async (update: (draft: Workspace) => void): Promise<boolean> => {
     if (!current.current || locked.current || !window.dashboard) return false;
     locked.current = true; setBusy(true); setError('');
     try {
@@ -34,6 +34,6 @@ export function useDashboard() {
       const saved = await window.dashboard.save(next); current.current = saved; setSnapshot(saved); return true;
     } catch (e) { setError(String(e)); return false; }
     finally { locked.current = false; setBusy(false); }
-  }
+  }, []);
   return { workspace: snapshot?.workspace, change, busy, error, load };
 }
