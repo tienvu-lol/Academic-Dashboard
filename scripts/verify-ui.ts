@@ -95,7 +95,7 @@ try {
   };
   await send('Runtime.enable'); await send('Log.enable');
   await waitFor("document.querySelector('.task-name-button')?.textContent.includes('CS Exam')", 'dashboard and SQL load');
-  if (await evaluate("document.body.textContent.includes('Auto-Prioritize')")) throw new Error('Removed Auto-Prioritize control is still visible');
+  if (await evaluate("document.body.textContent.includes('Auto-Prioritize') || document.body.textContent.includes('Use priority order')")) throw new Error('Removed task reprioritization control is still visible');
   await waitFor("document.querySelector('[role=tab][data-state=active]')?.textContent.trim().toLowerCase() === 'agenda'", 'agenda is the default schedule view');
   if (await evaluate("document.querySelectorAll('.schedule-agenda-day').length") !== 7) throw new Error('Agenda should render exactly seven days');
   const sandbox = await evaluate("({ node: typeof window.require, bridge: typeof window.dashboard?.load })");

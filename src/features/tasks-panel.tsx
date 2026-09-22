@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { GripVertical, Check, Pencil, Trash2, Search, Tags, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
+import { GripVertical, Check, Pencil, Trash2, Search, Tags, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,6 @@ export function TasksPanel({ workspace, tasks, change, busy, edit, remove, categ
     <div className="section-heading">
       <h2><Button variant="ghost" className="heading-toggle" onClick={() => setOpen(!open)}>{open ? <ChevronDown /> : <ChevronRight />}Tasks <Badge variant="secondary">{tasks.length}</Badge></Button></h2>
       <div className="toolbar-actions">
-        {!!settings.taskOrder?.length && <Button variant="ghost" size="sm" title="Restore automatic priority order" onClick={() => void change(draft => { draft.dashboardSettings = { ...settingsFor(draft), taskOrder: [] }; })}><RotateCcw />Use priority order</Button>}
         <Button variant="ghost" size="sm" onClick={categories}><Tags />Categories</Button>
       </div>
     </div>
