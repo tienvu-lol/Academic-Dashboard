@@ -22,6 +22,7 @@
     "bun": ">=1.4.2"
   },
   "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "latest",
     "date-fns": "^4.4.0",
@@ -43,6 +44,7 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "electron": "latest",
+    "electron-builder": "^26.15.3",
     "oxlint": "latest",
     "tailwindcss": "latest",
     "typescript": "7.0.2",

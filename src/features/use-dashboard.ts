@@ -3,7 +3,7 @@ import type { Workspace } from '../platform/workspace';
 import { todayLocal } from '../internships/model';
 
 export interface Snapshot { workspace: Workspace; revision: number }
-declare global { interface Window { dashboard?: { load(): Promise<Snapshot>; save(snapshot: Snapshot): Promise<Snapshot> } } }
+declare global { interface Window { dashboard?: { load(): Promise<Snapshot>; save(snapshot: Snapshot): Promise<Snapshot>; prioritize(): Promise<Snapshot> } } }
 export function useDashboard() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState('');
@@ -35,5 +35,13 @@ export function useDashboard() {
     } catch (e) { setError(String(e)); return false; }
     finally { locked.current = false; setBusy(false); }
   }, []);
-  return { workspace: snapshot?.workspace, change, busy, error, load };
+  const prioritize = useCallback(async () => {
+    if (locked.current || !window.dashboard) return false;
+    locked.current = true; setBusy(true); setError('');
+    try {
+      const saved = await window.dashboard.prioritize(); current.current = saved; setSnapshot(saved); return true;
+    } catch (e) { setError(String(e)); return false; }
+    finally { locked.current = false; setBusy(false); }
+  }, []);
+  return { workspace: snapshot?.workspace, change, prioritize, busy, error, load };
 }

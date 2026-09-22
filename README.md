@@ -1,12 +1,22 @@
 # Academic Dashboard
 
+![Academic Dashboard](docs/assets/ui-dashboard-1440x900.png)
+
 A local-first academic and internship workspace built on Electron, Bun, React, Vite, Tailwind CSS, and shadcn/ui. The interface uses a black background, cream text, and blue, green, and red accents.
 
 ## Workspace
 
+![Dashboard Layout Editing](docs/assets/ui-edit-layout.png)
+
 - Dashboard: compact shadcn cards and table, upcoming (next 48 hours), total, and overdue counts; collapsible, searchable tasks with completion, editing, and deletion. Drag the left handles to reorder, or focus a handle and use Alt + Up/Down. Reset to priority order from the task toolbar.
 - Task editor: course/category selection, mini date picker, optional due/start and end times, and per-task priority. Untimed tasks are due at the end of the selected local day.
+
+![Calendar View](docs/assets/ui-calendar-week.png)
+
 - Calendar: shadcn month blocks plus week/day time views. Pending assignments create a red workload glow (0–5+). Completed tasks remain visible in green and no longer count toward red workload. Mixed days show separate pending/completed indicators; only an active task can be #1. Weekday headers stay continuous in split panels.
+
+![Analytics View](docs/assets/ui-analytics.png)
+
 - Activity: cumulative due vs. completed lines for 30/90/365 days and a yearly completion heatmap. Completion dates are recorded when marking a task done and are editable in the completed task editor. Older completed records without dates are excluded from dated activity rather than assigned guessed dates. Reopening a task removes its completion date.
 - Settings: reorder keyword, priority, due-date, and course rules; customize keywords and preferred course order. Defaults emphasize whole-word Test and Exam matches.
 - Courses: semester/year grouping, colors, credits, and planned/in-progress/completed states. The DARS / credit plan tab provides an editable degree target (initially 120), custom requirements, course assignments, and planning notes. It is a personal worksheet, not an official degree audit; requirements may overlap.
@@ -52,7 +62,7 @@ bunx shadcn@latest add button
 
 No `@shadcn/lint` policy rules are enabled yet. Add chosen rules to the `rules` object in `.oxlintrc.json` after the design-system contract is defined.
 
-`bun run start` builds and launches the production app without Vite. `bun run verify:ui` exercises the actual Electron UI using a temporary SQLite database and isolated browser profile, then closes it. It does not modify your database. A screenshot is saved under ignored `artifacts/`. To test production, run `bun run build` followed by `bun run verify:ui --production`.
+`bun run start` builds and launches the production app without Vite. `bun run verify:ui` exercises the actual Electron UI using a temporary SQLite database and isolated browser profile, then closes it. It does not modify your database. A screenshot is saved under ignored `docs/assets/`. To test production, run `bun run build` followed by `bun run verify:ui --production`.
 
 ## Data
 

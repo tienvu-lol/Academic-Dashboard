@@ -6,11 +6,11 @@ const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const developmentServerUrl = process.env.VITE_DEV_SERVER_URL || undefined;
 const rendererUrl = developmentServerUrl ?? pathToFileURL(path.join(moduleDirectory, '../dist/index.html')).href;
 
-async function workspaceRequest(event: Electron.IpcMainInvokeEvent, method: string, body?: unknown) {
+async function workspaceRequest(event: Electron.IpcMainInvokeEvent, method: string, body?: unknown, pathSuffix = '') {
   if (!event.senderFrame || event.senderFrame !== event.sender.mainFrame || new URL(event.senderFrame.url).href !== new URL(rendererUrl).href) throw new Error('Untrusted workspace request.');
   const endpoint = process.env.DASHBOARD_DATA_URL;
   if (!endpoint || !process.env.DASHBOARD_DATA_TOKEN) throw new Error('Start the application through bun run dev or bun run start.');
-  const response = await fetch(endpoint, {
+  const response = await fetch(endpoint + pathSuffix, {
     method, headers: { Authorization: 'Bearer ' + process.env.DASHBOARD_DATA_TOKEN, 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
@@ -20,6 +20,7 @@ async function workspaceRequest(event: Electron.IpcMainInvokeEvent, method: stri
 }
 ipcMain.handle('workspace:load', event => workspaceRequest(event, 'GET'));
 ipcMain.handle('workspace:save', (event, body) => workspaceRequest(event, 'PUT', body));
+ipcMain.handle('workspace:prioritize', event => workspaceRequest(event, 'POST', undefined, '/prioritize'));
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);

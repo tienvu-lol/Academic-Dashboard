@@ -13,6 +13,7 @@ export interface DashboardSettings {
   taskOrder?: string[];
   layouts?: Layouts;
   creditPlan?: { target: number; notes: string; requirements: CreditRequirement[] };
+  typesafeKey?: string;
 }
 export interface CreditRequirement { id: string; name: string; target: number; courseIds: string[]; notes: string }
 export const defaultSettings: DashboardSettings = {
@@ -41,6 +42,7 @@ export function validateDashboardWorkspace(value: unknown): asserts value is Wor
     for (const field of ['keywords', 'courseOrder', 'internshipCategories']) if (!Array.isArray(s[field]) || !(s[field] as unknown[]).every(x => typeof x === 'string')) throw new Error('Invalid dashboard settings.');
     if (s.taskOrder !== undefined && (!Array.isArray(s.taskOrder) || !s.taskOrder.every(x => typeof x === 'string'))) throw new Error('Invalid task order.');
     if (s.layouts !== undefined && !validLayouts(s.layouts)) throw new Error('Invalid widget layouts.');
+    if (s.typesafeKey !== undefined && typeof s.typesafeKey !== 'string') throw new Error('Invalid TypeSafe key.');
     if (s.creditPlan !== undefined) {
       const p = s.creditPlan;
       if (!isRecord(p) || typeof p.target !== 'number' || !Number.isFinite(p.target) || p.target < 0 || typeof p.notes !== 'string' || !Array.isArray(p.requirements)) throw new Error('Invalid credit plan.');
@@ -51,7 +53,7 @@ export function validateDashboardWorkspace(value: unknown): asserts value is Wor
 export interface Task {
   id: string; kind: TaskKind; name: string; courseId: string; categoryId: string;
   course: string; category: string; due: string; end: string; priority: string;
-  completed: boolean; color: string; entity: Entity;
+  completed: boolean; color: string; aiScore: number; entity: Entity;
 }
 export function coursesFor(workspace: Workspace) { return workspace.academic.collections['University/Courses'].map(row => hydrateEntity(row, workspace.academic)); }
 export function tasksFor(workspace: Workspace): Task[] {
@@ -69,7 +71,8 @@ export function tasksFor(workspace: Workspace): Task[] {
       course: course?.['University/Name'] ?? '', category: category?.name ?? '',
       due: text(row['University/Due Date']), end: text(row['Dashboard/End']), priority: optionName('University/Priority') || 'Medium',
       completed: row['Dashboard/Completed'] === true || /^(done|completed)$/i.test(text(state?.['enum/name'])),
-      color: text(course?.['Dashboard/Color']) || (kind === 'To-Do' ? category?.color : '') || palette[index % palette.length], entity: raw };
+      color: text(course?.['Dashboard/Color']) || (kind === 'To-Do' ? category?.color : '') || palette[index % palette.length],
+      aiScore: typeof row['Dashboard/AIPriorityScore'] === 'number' ? row['Dashboard/AIPriorityScore'] : 0, entity: raw };
   }));
 }
 export function isHighlighted(task: Task, settings: DashboardSettings) {
@@ -83,6 +86,11 @@ export function orderedTasks(tasks: Task[], settings: DashboardSettings): Task[]
   const priority = (s: string) => ({ Urgent: 4, High: 3, Medium: 2, Low: 1 }[s] ?? 2);
   const rank = (id: string) => { const index = settings.courseOrder.indexOf(id); return index < 0 ? settings.courseOrder.length : index; };
   return [...tasks].sort((a, b) => {
+    // If aiScore exists and differs, it always takes precedence over default rules if requested.
+    // The user requested "autoprioritizes which tasks should be prioritized over all the rest".
+    // So we'll unconditionally use AI Score first if it's > 0 (or we can just sort by aiScore then dueTime).
+    if (a.aiScore !== b.aiScore) return b.aiScore - a.aiScore;
+
     for (const rule of settings.order) {
       const difference = rule === 'keywords' ? Number(isHighlighted(b, settings)) - Number(isHighlighted(a, settings))
         : rule === 'priority' ? priority(b.priority) - priority(a.priority)
