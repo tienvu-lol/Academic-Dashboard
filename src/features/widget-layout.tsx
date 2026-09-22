@@ -29,6 +29,8 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
   const previewRef = useRef<WidgetPlacement[] | undefined>(undefined);
   const pendingPoint = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = useRef<number | undefined>(undefined);
+  // Direct DOM reference to the active widget for smooth visual drag without re-renders
+  const activeWidgetEl = useRef<HTMLElement | null>(null);
   const layout = positionedLayout(preview ?? saved);
   const positions = new Map(layout.map(item => [item.id, item]));
 
@@ -122,7 +124,10 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
     if (event.button !== 0 || busy) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const body = event.currentTarget.closest('.workspace-widget')?.querySelector<HTMLElement>('.widget-body');
+    const widget = event.currentTarget.closest<HTMLElement>('.workspace-widget');
+    const body = widget?.querySelector<HTMLElement>('.widget-body');
+    // Store reference to the active widget DOM node for direct transform updates
+    activeWidgetEl.current = widget ?? null;
     interaction.current = {
       kind,
       id: item.id,
@@ -142,6 +147,10 @@ export function WidgetLayout({ page, workspace, change, editing, busy, widgets }
     if (frame.current !== undefined) {
       cancelAnimationFrame(frame.current);
       frame.current = undefined;
+    }
+    // Reset direct DOM transform on the active widget
+    if (activeWidgetEl.current) {
+      activeWidgetEl.current = null;
     }
     interaction.current = undefined;
     pendingPoint.current = undefined;
