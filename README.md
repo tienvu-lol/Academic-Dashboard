@@ -1,417 +1,108 @@
 # Academic Dashboard
 
-![Academic Dashboard](artifacts/ui-dashboard-1440x900.png)
+![Academic Dashboard](docs/assets/ui-dashboard-1440x900.png)
 
-A lightweight desktop academic management application built to centralize coursework, assignments, schedules, notes, and degree progress in one place.
+A local-first academic and internship workspace built on Electron, Bun, React, Vite, Tailwind CSS, and shadcn/ui. The interface uses a black background, cream text, and blue, green, and red accents.
 
-Academic Dashboard is designed around a simple idea: students should not need five different websites, spreadsheets, calendars, and note-taking systems just to understand what they need to do next.
+## Workspace
 
-The project is currently being developed as a native-oriented desktop application with a focus on performance, modularity, and a clean information-dense interface.
+![Dashboard Layout Editing](docs/assets/ui-edit-layout.png)
 
----
+- Dashboard: compact shadcn cards and table, upcoming (next 48 hours), total, and overdue counts; collapsible, searchable tasks with completion, editing, and deletion. Drag the left handles to reorder, or focus a handle and use Alt + Up/Down. Reset to priority order from the task toolbar.
+- Task editor: course/category selection, mini date picker, optional due/start and end times, and per-task priority. Untimed tasks are due at the end of the selected local day.
 
-## Overview
+![Calendar View](docs/assets/ui-calendar-week.png)
 
-Academic Dashboard provides a unified workspace for tracking:
+- Calendar: shadcn month blocks plus week/day time views. Pending assignments create a red workload glow (0–5+). Completed tasks remain visible in green and no longer count toward red workload. Mixed days show separate pending/completed indicators; only an active task can be #1. Weekday headers stay continuous in split panels.
 
-* Assignments and deadlines
-* Courses and semesters
-* Academic progress
-* Calendar events
-* Notes
-* Upcoming quizzes, exams, and finals
-* Degree requirements
-* Semester workload and momentum
+![Analytics View](docs/assets/ui-analytics.png)
 
-The goal is to provide the usefulness of a full academic planning platform without the overhead of a traditional browser-based productivity suite.
+- Activity: cumulative due vs. completed lines for 30/90/365 days and a yearly completion heatmap. Completion dates are recorded when marking a task done and are editable in the completed task editor. Older completed records without dates are excluded from dated activity rather than assigned guessed dates. Reopening a task removes its completion date.
+- Settings: reorder keyword, priority, due-date, and course rules; customize keywords and preferred course order. Defaults emphasize whole-word Test and Exam matches.
+- Courses: semester/year grouping, colors, credits, and planned/in-progress/completed states. The DARS / credit plan tab provides an editable degree target (initially 120), custom requirements, course assignments, and planning notes. It is a personal worksheet, not an official degree audit; requirements may overlap.
+- Daily notes: a dashboard widget and a searchable, sortable tab between Dashboard and Internships. One note is created per local day on launch or when an open app crosses midnight; no background service or missed-day backfill is added. Write or preview Markdown, expand the editor, save with Ctrl/Command + S, import .md files, and export .md copies. Navigation warns about unsaved edits. Raw HTML and remote images are not rendered.
+- Internships: collapsible list/details, search, sorting, outcome/category filters, editable categories, and an annual application heatmap. Offers and rejections have separate totals and filter shortcuts; the smoothed outcome timeline includes applications, offers, and rejections by their recorded dates.
+- Reorder categories in their manager using drag handles or Alt + Up/Down; dropdowns preserve the saved order.
+- A compact icon-and-text navigation rail uses roughly 5% of the window width. The title-bar control hides it completely; the left edge reveals it temporarily. The title bar uses Electron's native controls, without WinUI 3 or another host.
+- General data imports remain hidden. Existing data and import/domain modules are preserved; Markdown note import/export is available.
 
----
+## Arrange your workspace
 
-## Features
+Use **Edit layout** at the bottom of the navigation rail on Dashboard or Internships. Drag a widget grip to another widget's left/right edge for a half-width split, or top/bottom to reorder. Every stat card, calendar, task list, graph, notes widget, and course panel moves independently. Corner handles resize width and height; the width menu and move arrows provide alternatives. Alt + Up/Down on a grip reorders; arrow keys on a resize handle change its size. **Auto height** restores a panel's natural height.
 
-### Dashboard
+Changes save automatically to Bun SQL, separately for each tab. **Done editing** hides the controls; **Reset layout** restores just that tab's arrangement without changing records. Narrow windows stack panels in saved reading order; dense tables and fixed-height panels scroll internally. No layout library or additional native host is installed.
 
-![Dashboard Layout Editing](artifacts/ui-edit-layout.png)
+## Stack
 
-A centralized overview of the student's current academic state.
-
-* Today's assignments
-* Upcoming deadlines
-* Overdue work
-* Course-specific task organization
-* Priority and assessment indicators
-* Semester progress visualization
-
-### Assignment Tracking
-
-Assignments can be organized by:
-
-* Course
-* Due date
-* Category
-* Completion status
-* Assessment type
-* Priority
-
-Assignments can be surfaced automatically across dashboard views based on their state and due date.
-
-### Calendar
-
-![Calendar View](artifacts/ui-calendar-week.png)
-
-Academic deadlines and events can be viewed through calendar-based interfaces to provide both short-term and long-term planning.
-
-Planned functionality includes:
-
-* Monthly calendar
-* Assignment deadlines
-* Exam and quiz highlighting
-* Course color coding
-* External calendar integration
-
-### Degree Planning
-
-A visual degree map for tracking academic progress across semesters.
-
-Designed to eventually support:
-
-* Completed courses
-* Current courses
-* Planned courses
-* Prerequisites
-* Degree requirements
-* Transfer credit
-* Multi-year academic planning
-
-### Notes
-
-Integrated Markdown-based notes allow academic context to live beside coursework rather than in a completely separate application.
-
-### Academic Analytics
-
-![Analytics View](artifacts/ui-analytics.png)
-
-Dashboard visualizations are intended to make workload and progress easier to understand at a glance.
-
-Examples include:
-
-* Semester completion
-* Assignment distribution
-* Calendar heatmaps
-* Monthly momentum
-* Course workload
-
----
-
-## Tech Stack
-
-| Layer             | Technology       |
-| ----------------- | ---------------- |
-| Runtime           | Bun              |
-| Language          | TypeScript       |
-| UI                | React            |
-| Native UI Runtime | GPUIX            |
-| Native Bindings   | `@gpuix/native`  |
-| React Integration | `@gpuix/react`   |
-| Local Data        | Bun SQL / SQLite |
-| Testing           | Bun Test         |
-| Type Checking     | TypeScript       |
-
-The project intentionally avoids the traditional Electron architecture where possible.
-
-GPUIX provides the desktop rendering/runtime layer while React and TypeScript provide the application and component architecture.
-
----
-
-## Architecture
-
-```text
-Academic Dashboard
-│
-├── Application Layer
-│   ├── Dashboard
-│   ├── Assignments
-│   ├── Calendar
-│   ├── Courses
-│   ├── Degree Planning
-│   └── Notes
-│
-├── React Component Layer
-│   ├── Views
-│   ├── Widgets
-│   ├── Navigation
-│   └── Shared Components
-│
-├── Data Layer
-│   ├── Models
-│   ├── Workspace State
-│   ├── Assignment Storage
-│   └── Local Database
-│
-├── Runtime Layer
-│   ├── Bun
-│   └── TypeScript
-│
-└── Native Layer
-    ├── GPUIX
-    ├── @gpuix/react
-    └── @gpuix/native
-```
-
-The application is structured so that UI components remain separated from persistent storage and platform-specific behavior.
-
-This makes it easier to modify or replace individual layers without restructuring the entire application.
-
----
-
-## Getting Started
-
-### Requirements
-
-Install:
-
-* [Bun](https://bun.sh/)
-* Git
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-cd Academic-Dashboard
-```
-
-Install dependencies:
-
-```bash
-bun install
-```
-
-Run the application:
-
-```bash
-bun run dev
-```
-
----
+- Bun 1.4.2 runtime, package manager, test runner, and SQL client
+- Electron 44 native host with a React and Vite renderer
+- Tailwind CSS v4 and shadcn/ui project configuration
+- SQLite through the unified `Bun.SQL` API
+- TypeScript 7
+- Oxlint with `@shadcn/lint` registered
 
 ## Development
 
-The development entry point is:
-
-```text
-src/main.tsx
-```
-
-The application initializes through GPUIX:
-
-```tsx
-import { render } from "@gpuix/react";
-import App from "./dashboard-components/App";
-import "./platform/runtime";
-
-render(<App />, {
-  title: "Academic Dashboard",
-  width: 1280,
-  height: 820,
-  minWidth: 900,
-  minHeight: 620,
-});
-```
-
-GPUIX creates the native application window while the React application defines the interface rendered inside it.
-
----
-
-## Scripts
-
-Start the development runtime:
-
-```bash
+```sh
+bun install
 bun run dev
-```
-
-Run tests:
-
-```bash
-bun test
-```
-
-Run TypeScript validation:
-
-```bash
+bun run test
 bun run typecheck
+bun run lint
+bun run verify:ui
 ```
 
-Run the full validation pipeline:
+`bun run dev` starts the Bun data service, Vite development server, and Electron window. The workspace is available in the desktop window, not directly in a browser. Add shadcn components only when they are required:
 
-```bash
-bun run check
+```sh
+bunx shadcn@latest add button
 ```
 
-Equivalent configuration:
+`bun run dev` builds the Electron main process, starts Vite, and launches the desktop window. `bun run build` produces the renderer and Electron main-process bundles; installer/signing tooling is intentionally not included.
 
-```json
-{
-  "scripts": {
-    "dev": "bun --hot src/main.tsx",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun run test"
-  }
-}
-```
+No `@shadcn/lint` policy rules are enabled yet. Add chosen rules to the `rules` object in `.oxlintrc.json` after the design-system contract is defined.
 
----
+`bun run start` builds and launches the production app without Vite. `bun run verify:ui` exercises the actual Electron UI using a temporary SQLite database and isolated browser profile, then closes it. It does not modify your database. A screenshot is saved under ignored `docs/assets/`. To test production, run `bun run build` followed by `bun run verify:ui --production`.
 
-## Project Structure
+## Data
+
+The live workspace remains a SQLite database, not a JSON document. By default it is stored at:
+
+- Windows: `%LOCALAPPDATA%/AcademicDashboard/academic-dashboard.sqlite`
+- Linux/macOS fallback: `$XDG_DATA_HOME` or `$HOME` under `AcademicDashboard/`
+
+Set `ACADEMIC_DASHBOARD_DATABASE` to override the database filename. The SQL schema stores workspace metadata, academic entities, documents, select options, and internships in separate indexed tables. Writes use a single transaction.
+
+JSON, CSV, Markdown, and HTML import/backup domain modules are retained. General imports are not exposed; Daily notes can import/export Markdown. Existing documents and records are kept when editing other records. Removing a course/category clears its associations without deleting the tasks.
+
+Bun alone owns SQL access. The sandboxed renderer has only load/save methods through a preload bridge; Electron forwards authenticated requests to a loopback-only Bun service. Saves are validated, transaction-backed, and revision-checked. Domain and priority logic have no React or Electron dependency.
+
+## Source layout
 
 ```text
-Academic-Dashboard/
-│
-├── src/
-│   ├── main.tsx
-│   │
-│   ├── dashboard-components/
-│   │   ├── App
-│   │   ├── Dashboard
-│   │   ├── Calendar
-│   │   ├── Assignments
-│   │   └── SemesterChart
-│   │
-│   ├── platform/
-│   │   └── runtime
-│   │
-│   ├── storage/
-│   │
-│   └── ...
-│
-├── package.json
-├── tsconfig.json
-├── bun.lock
-└── README.md
+src/main.tsx                React entry point
+src/features/               Dashboard, calendar, forms, internships, settings
+src/components/ui/          shadcn UI primitives
+src/styles/globals.css      Palette, Tailwind theme, and layouts
+electron/main.ts            Sandboxed Electron window host
+electron/preload.ts         Narrow workspace bridge
+scripts/dev.ts              Bun-native Vite/Electron development launcher
+scripts/verify-ui.ts        Isolated Electron interaction/screenshot check
+src/platform/database.ts   Bun SQL repository and SQLite schema
+src/platform/dashboard-server.ts  Authenticated loopback workspace service
+src/platform/workspace.ts  Workspace state and atomic transactions
+src/data/planning.ts        Pure task, calendar priority, and summary logic
+src/data/                  Academic data model and imports
+src/internships/           Internship data model and imports
+tests/                     Bun unit and SQL integration tests
 ```
 
-> The internal architecture is actively evolving as the project transitions toward a more modular native application design.
+## Native title bar
 
----
+Electron's native Window Controls Overlay is enabled without an additional native framework. Customize it with these environment variables before running the app:
 
-## Design Goals
+- `ACADEMIC_DASHBOARD_TITLE_BAR_COLOR` (default `#000000`)
+- `ACADEMIC_DASHBOARD_TITLE_BAR_SYMBOL_COLOR` (default `#FFF7E4`)
+- `ACADEMIC_DASHBOARD_TITLE_BAR_HEIGHT` (default `30`)
 
-Academic Dashboard is being built around several core principles.
-
-### Fast
-
-Opening the dashboard should feel closer to opening a native utility than loading a web application.
-
-### Local First
-
-Core academic information should remain usable without relying on an external server.
-
-### Information Dense
-
-Academic applications contain a large amount of information.
-
-The interface should expose important information without overwhelming the user or wasting screen space.
-
-### Modular
-
-Assignments, calendars, degree planning, analytics, and notes should operate as independent modules connected through shared application state.
-
-### Extensible
-
-The architecture should eventually allow integrations with services such as:
-
-* Canvas
-* Google Calendar
-* University course systems
-* External calendars
-* Academic APIs
-* AI-assisted planning tools
-
----
-
-## Current Development Status
-
-> **Early Development / Active Refactor**
-
-### Implemented
-
-* [x] Core dashboard
-* [x] Assignment tracking
-* [x] Calendar functionality
-* [x] Course organization
-* [x] Dashboard analytics
-* [x] Local application state
-* [x] Bun runtime
-* [x] GPUIX application shell
-* [x] React + TypeScript component architecture
-* [x] Initial automated tests
-
-### In Progress
-
-* [ ] UI/UX overhaul
-* [ ] Modular dashboard layout
-* [ ] Improved component architecture
-* [ ] Persistent local database architecture
-* [ ] Improved calendar workflows
-* [ ] Degree planning improvements
-* [ ] Native desktop interaction patterns
-
-### Planned
-
-* [ ] Drag-and-drop dashboard modules
-* [ ] Resizable dashboard panels
-* [ ] Canvas integration
-* [ ] Google Calendar integration
-* [ ] Notification system
-* [ ] Automated assignment importing
-* [ ] Academic analytics
-* [ ] Degree requirement engine
-* [ ] Search and command palette
-* [ ] AI-assisted academic planning
-
----
-
-## Long-Term Vision
-
-Academic Dashboard is intended to become more than an assignment tracker.
-
-The long-term goal is a local academic operating system where a student can answer questions such as:
-
-> What do I need to do today?
-
-> What deadlines are approaching?
-
-> Which class is consuming most of my time?
-
-> What requirements remain in my degree?
-
-> What courses can I take next semester?
-
-> How heavy will my next semester be?
-
-> Am I falling behind compared with earlier in the semester?
-
-without switching between multiple university portals and productivity applications.
-
----
-
-## Contributing
-
-The project is currently under active development.
-
-Issues, architectural suggestions, UI/UX improvements, and contributions are welcome as the application matures.
-
-For major architectural changes, open an issue or discussion before submitting a pull request.
-
----
-
-## License
-
-License information will be added as the project approaches a public release.
-
----
-
-## Author
-
-Built as an independent project exploring native application development, academic productivity systems, and human-computer interaction.
+The renderer has no Node integration, uses context isolation and Chromium sandboxing, denies permission requests, and blocks new windows and unexpected navigation.

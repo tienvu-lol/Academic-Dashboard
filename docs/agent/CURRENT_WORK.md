@@ -1,54 +1,55 @@
 # Current Work
 ## Objective
-Add screenshots of the dashboard functionality to the README.md to better illustrate the application's features.
+Move dashboard screenshots to a version-controlled folder so they render correctly on GitHub.
 
 ## Scope
 ### In Scope
-- Add existing screenshots from the `artifacts/` folder to relevant sections in `README.md`.
-- Include main dashboard, calendar, layout editing, and analytics views.
+- Create `docs/assets/` folder.
+- Copy needed screenshots from the gitignored `artifacts/` folder to `docs/assets/`.
+- Update `README.md` links to point to `docs/assets/`.
 
 ### Out of Scope
 - Taking new screenshots.
-- Modifying application code.
 
 ## Current Repository State
-- Active branch: `Native-Overhaul`
-- `README.md` updated with images pointing to the `artifacts/` directory.
+- Active branch: `main` (user switched branches)
+- Images moved to `docs/assets/` and are now tracked.
 
 ## TODO
 - [x] Read AGENTS.md, CURRENT_WORK.md, inspect git status.
 - [x] Update CURRENT_WORK.md BEFORE writing any code.
-- [x] Add screenshots to `README.md`.
-- [x] Run verification (Markdown paths visually verified).
+- [x] Copy images to `docs/assets/`.
+- [x] Update links in `README.md`.
+- [x] Run verification (Git status confirms `docs/assets/` is untracked and not ignored).
 - [x] Update CURRENT_WORK.md before ending the session.
 
 ## Expected Files Touched
 - `README.md`
+- `docs/assets/*` (new images)
 
 ## Acceptance Criteria
-- [x] `README.md` includes visual representations of the application (dashboard, calendar, analytics, layout editing).
-- [x] Image paths correctly point to the `artifacts/` directory.
+- [x] Images are tracked in git (not ignored).
+- [x] `README.md` uses the new image paths.
 
 ## Implementation Notes
-- Inserted `artifacts/ui-dashboard-1440x900.png` under `# Academic Dashboard`.
-- Inserted `artifacts/ui-edit-layout.png` under `### Dashboard`.
-- Inserted `artifacts/ui-calendar-week.png` under `### Calendar`.
-- Inserted `artifacts/ui-analytics.png` under `### Academic Analytics`.
+- Created `docs/assets/` and copied the images over.
+- Re-ran the text replacement on the newly checked out `main` branch `README.md`.
 
 ## Verification
-- Checked that paths in README match the filenames generated in the `artifacts/` folder exactly.
+- Ran `git status` which confirmed `docs/assets/` is ready to be staged (unlike `artifacts/`).
 
 ## Completed This Session
-- Updated `README.md` to include visual references.
+- Copied images to a trackable folder.
+- Inserted images directly into the `main` branch's `README.md`.
 
 ## Remaining Work
-- None for this specific task.
+- None.
 
 ## Known Regressions / Risks
 - None.
 
 ## Exact Next Action
-- Await next instructions from user.
+- Wait for user.
 
 ## Handoff Summary
-- Added `ui-dashboard-1440x900.png`, `ui-edit-layout.png`, `ui-calendar-week.png`, and `ui-analytics.png` to the appropriate sections in `README.md`.
+- Images successfully moved to `docs/assets/` and the `README.md` is updated.

@@ -13,6 +13,7 @@ export interface DashboardSettings {
   taskOrder?: string[];
   layouts?: Layouts;
   creditPlan?: { target: number; notes: string; requirements: CreditRequirement[] };
+  typesafeKey?: string;
 }
 export interface CreditRequirement { id: string; name: string; target: number; courseIds: string[]; notes: string }
 export const defaultSettings: DashboardSettings = {
@@ -41,6 +42,7 @@ export function validateDashboardWorkspace(value: unknown): asserts value is Wor
     for (const field of ['keywords', 'courseOrder', 'internshipCategories']) if (!Array.isArray(s[field]) || !(s[field] as unknown[]).every(x => typeof x === 'string')) throw new Error('Invalid dashboard settings.');
     if (s.taskOrder !== undefined && (!Array.isArray(s.taskOrder) || !s.taskOrder.every(x => typeof x === 'string'))) throw new Error('Invalid task order.');
     if (s.layouts !== undefined && !validLayouts(s.layouts)) throw new Error('Invalid widget layouts.');
+    if (s.typesafeKey !== undefined && typeof s.typesafeKey !== 'string') throw new Error('Invalid TypeSafe key.');
     if (s.creditPlan !== undefined) {
       const p = s.creditPlan;
       if (!isRecord(p) || typeof p.target !== 'number' || !Number.isFinite(p.target) || p.target < 0 || typeof p.notes !== 'string' || !Array.isArray(p.requirements)) throw new Error('Invalid credit plan.');
